@@ -45,6 +45,23 @@ export interface RiskLimits {
    * the Start button in the pre-start simulation is disabled.
    */
   collateralSafetyPct: number;
+  /**
+   * Hard cap on the total number of resting orders across all tracked
+   * tickers. The scheduler will skip placing new orders for a ticker
+   * once this many orders are already on the book. 0 disables the cap.
+   */
+  maxOpenOrders: number;
+  /**
+   * 15-minute cycle safety stop: if this many consecutive *settled* 15-min
+   * cycles realize a net loss, the bot auto-pauses. 0 disables.
+   */
+  maxConsecutiveLosingCycles: number;
+  /**
+   * 15-minute cycle safety stop: if equity drops more than this many dollars
+   * from the cycle's starting equity *within* a single 15-min cycle, the bot
+   * auto-pauses. 0 disables.
+   */
+  intraCycleDrawdownDollars: number;
 }
 
 export interface MarketQuote {
