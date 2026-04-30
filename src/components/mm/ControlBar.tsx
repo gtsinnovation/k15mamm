@@ -96,7 +96,7 @@ export function ControlBar() {
       },
       {
         id: "markets",
-        label: "Loading BTC hourly markets",
+        label: "Loading BTC 15-minute markets",
         status: needsMarkets ? "pending" : "skipped",
         detail: needsMarkets ? "Kalshi /markets" : "Already loaded",
       },
@@ -130,7 +130,7 @@ export function ControlBar() {
       const client = new KalshiClient(s.credentials);
       jobs.push(
         client
-          .getBtcHourlyMarkets()
+          .getBtc15MinMarkets()
           .then((m) => {
             useBotStore.getState().setMarkets(m);
             updateStep("markets", {

@@ -16,6 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useBotStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { KeyRound } from "lucide-react";
+import { Link } from "react-router-dom";
 import { subscribeSpot } from "@/lib/kalshi/spotPoll";
 
 const Index = () => {
@@ -41,16 +42,18 @@ const Index = () => {
           <div>
             <h1 className="text-xl font-bold tracking-tight">K15M AMM</h1>
             <p className="text-xs text-muted-foreground">
-              Avellaneda–Stoikov · Hourly Kalshi BTC range markets · Local browser bot
+              Avellaneda–Stoikov · Kalshi BTC 15-minute contracts · Local browser bot
             </p>
           </div>
           <Button
+            asChild
             variant={hasAnyCreds ? "outline" : "default"}
             size="sm"
-            onClick={() => setTab("settings")}
           >
-            <KeyRound className="mr-2 h-4 w-4" />
-            {hasAnyCreds ? "Manage credentials" : "Add API credentials"}
+            <Link to="/credentials">
+              <KeyRound className="mr-2 h-4 w-4" />
+              {hasAnyCreds ? "Manage credentials" : "Add API credentials"}
+            </Link>
           </Button>
         </div>
       </header>

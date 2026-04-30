@@ -110,7 +110,7 @@ export default function Landing({ onAuthorized }: LandingProps) {
               </span>
             </h1>
             <p className="max-w-xl text-lg text-muted-foreground">
-              An automated market maker for Kalshi hourly BTC range markets.
+              An automated market maker for Kalshi's BTC 15-minute contracts.
               Sign in, paste your own Kalshi API Key ID and RSA private key, and
               the bot runs locally in your browser — keys stay encrypted on your device.
             </p>

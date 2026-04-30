@@ -37,12 +37,12 @@ export function MarketsPanel() {
       }
       // Step 2: actual fetch
       const client = new KalshiClient(credentials);
-      const ms = await client.getBtcHourlyMarkets();
+      const ms = await client.getBtc15MinMarkets();
       setMarkets(ms);
-      log("info", `manual refresh: loaded ${ms.length} BTC hourly markets`);
+      log("info", `manual refresh: loaded ${ms.length} BTC 15-min markets`);
       if (ms.length === 0) {
         setDiagnostic({ kind: "empty-ok" });
-        toast.warning("No BTC hourly markets returned by Kalshi");
+        toast.warning("No BTC 15-min markets returned by Kalshi");
       } else {
         setDiagnostic({ kind: "idle" });
         toast.success(`Loaded ${ms.length} markets`);
@@ -61,7 +61,7 @@ export function MarketsPanel() {
     <div className="rounded-lg border border-border bg-card">
       <div className="flex items-start justify-between gap-2 border-b border-border p-4">
         <div>
-          <h2 className="text-lg font-semibold">BTC hourly · Price and Above</h2>
+          <h2 className="text-lg font-semibold">BTC 15-minute markets</h2>
           <p className="text-xs text-muted-foreground">{markets.length} open · {trackedTickers.length} tracked</p>
         </div>
         <Button size="sm" variant="outline" onClick={refresh} disabled={loading}>
@@ -93,11 +93,13 @@ export function MarketsPanel() {
                   <td className="px-3 py-2">
                     <div className="font-mono text-xs">{m.ticker}</div>
                     <div className="text-xs text-muted-foreground">
-                      {m.floor_strike != null
-                        ? `≥ $${m.floor_strike.toLocaleString()}`
-                        : m.cap_strike != null
-                          ? `≤ $${m.cap_strike.toLocaleString()}`
-                          : "—"}
+                      {m.floor_strike != null && m.cap_strike != null
+                        ? `$${m.floor_strike.toLocaleString()}–$${m.cap_strike.toLocaleString()}`
+                        : m.floor_strike != null
+                          ? `≥ $${m.floor_strike.toLocaleString()}`
+                          : m.cap_strike != null
+                            ? `≤ $${m.cap_strike.toLocaleString()}`
+                            : "—"}
                     </div>
                   </td>
                   <td className="px-3 py-2 text-right font-mono text-xs">
@@ -158,7 +160,7 @@ function EmptyDiagnostic({
 }) {
   let Icon = Inbox;
   let title = "No markets loaded";
-  let detail = "Click Refresh to fetch BTC hourly markets from Kalshi.";
+  let detail = "Click Refresh to fetch BTC 15-minute markets from Kalshi.";
   let tone: "muted" | "warn" | "error" = "muted";
 
   if (state.kind === "no-creds") {
@@ -193,9 +195,9 @@ function EmptyDiagnostic({
   } else if (state.kind === "empty-ok") {
     Icon = CheckCircle2;
     tone = "warn";
-    title = "Connected, but no hourly BTC markets are open";
+    title = "Connected, but no 15-minute BTC markets are open";
     detail =
-      "Kalshi has no open KXBTC hourly range markets right now (between cycles, or the series is paused). Try again in a few minutes.";
+      "Kalshi has no open KXBTC 15-minute markets right now (between cycles, or the series is paused). Try again in a minute.";
   }
 
   const toneClass =

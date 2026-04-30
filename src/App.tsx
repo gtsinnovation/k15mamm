@@ -12,25 +12,27 @@ import { RiskDisclaimerGate } from "@/components/RiskDisclaimerGate";
 const Index = lazy(() => import("./pages/Index.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 const Privacy = lazy(() => import("./pages/Privacy.tsx"));
+const Credentials = lazy(() => import("./pages/Credentials.tsx"));
 
 const queryClient = new QueryClient();
 
-function GatedHome() {
+function useAuthorized() {
   // Authorized = any signed-in Lovable Cloud user. Each user supplies their
   // own Kalshi API credentials, encrypted in their own browser vault.
   const [authorized, setAuthorized] = useState<boolean | null>(null);
-
   useEffect(() => {
-    const evaluate = (email: string | null | undefined) => {
-      setAuthorized(!!email);
-    };
+    const evaluate = (email: string | null | undefined) => setAuthorized(!!email);
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) =>
       evaluate(session?.user?.email),
     );
     supabase.auth.getSession().then(({ data: { session } }) => evaluate(session?.user?.email));
     return () => sub.subscription.unsubscribe();
   }, []);
+  return [authorized, setAuthorized] as const;
+}
 
+function GatedHome() {
+  const [authorized, setAuthorized] = useAuthorized();
   if (authorized) {
     return (
       <ErrorBoundary>
@@ -48,11 +50,27 @@ function GatedHome() {
       </ErrorBoundary>
     );
   }
-  return (
-    <Landing
-      onAuthorized={() => setAuthorized(true)}
-    />
-  );
+  return <Landing onAuthorized={() => setAuthorized(true)} />;
+}
+
+function GatedCredentials() {
+  const [authorized, setAuthorized] = useAuthorized();
+  if (authorized) {
+    return (
+      <ErrorBoundary>
+        <Suspense
+          fallback={
+            <div className="flex min-h-screen items-center justify-center bg-background text-sm text-muted-foreground">
+              Loading credentials…
+            </div>
+          }
+        >
+          <Credentials />
+        </Suspense>
+      </ErrorBoundary>
+    );
+  }
+  return <Landing onAuthorized={() => setAuthorized(true)} />;
 }
 
 const App = () => (
@@ -63,6 +81,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<GatedHome />} />
+          <Route path="/credentials" element={<GatedCredentials />} />
           <Route
             path="/privacy"
             element={
