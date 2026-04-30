@@ -3,15 +3,13 @@
 // response back. No secrets stored server-side.
 //
 // Access control: every request must carry a valid Lovable Cloud (Supabase)
-// session JWT for the single allowlisted Google account. Anyone else — even
-// with valid Kalshi credentials — gets 403 before we ever hit Kalshi.
+// session JWT for ANY signed-in user. Each user supplies their own Kalshi
+// credentials in the browser; this proxy just relays the signed request.
 // NOTE: This function MUST run with `verify_jwt = false` in supabase/config.toml
-// because we validate the JWT in code (using supabase.auth.getUser), and the
+// because we validate the JWT in code (using supabase.auth.getClaims), and the
 // gateway-level JWT check is incompatible with the new asymmetric signing-key
 // JWTs issued via Google OAuth on Lovable Cloud.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-
-const ALLOWED_EMAIL = "gbsahn@gmail.com";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -62,27 +60,21 @@ Deno.serve(async (req) => {
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       global: { headers: { Authorization: `Bearer ${token}` } },
     });
-    // Prefer getClaims() — it validates the JWT locally via JWKS and works
-    // with the new asymmetric signing keys (ES256). Fall back to getUser()
-    // for legacy HS256 tokens.
-    let email = "";
+    // Prefer getClaims() — validates the JWT locally via JWKS and works with
+    // asymmetric signing keys (ES256). Fall back to getUser() for legacy
+    // HS256 tokens. Any authenticated user is allowed; per-user Kalshi auth
+    // is enforced by the headers the browser signs with the user's own key.
+    let authed = false;
     try {
       const { data: claimsRes, error: claimsErr } = await supabase.auth.getClaims(token);
       if (claimsErr) throw claimsErr;
-      email = String(claimsRes?.claims?.email ?? "").toLowerCase();
+      authed = !!claimsRes?.claims?.sub;
     } catch {
       const { data: userRes, error: userErr } = await supabase.auth.getUser(token);
-      if (userErr || !userRes?.user) {
-        return jsonError(401, "Invalid or expired session", "unauthorized");
-      }
-      email = (userRes.user.email ?? "").toLowerCase();
+      authed = !userErr && !!userRes?.user;
     }
-    if (email !== ALLOWED_EMAIL.toLowerCase()) {
-      return jsonError(
-        403,
-        "Account not authorized for trade API access",
-        "forbidden",
-      );
+    if (!authed) {
+      return jsonError(401, "Invalid or expired session", "unauthorized");
     }
 
     const url = new URL(req.url);

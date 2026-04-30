@@ -14,15 +14,15 @@ const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 const Privacy = lazy(() => import("./pages/Privacy.tsx"));
 
 const queryClient = new QueryClient();
-const ALLOWED_EMAIL = "gbsahn@gmail.com";
 
 function GatedHome() {
+  // Authorized = any signed-in Lovable Cloud user. Each user supplies their
+  // own Kalshi API credentials, encrypted in their own browser vault.
   const [authorized, setAuthorized] = useState<boolean | null>(null);
 
   useEffect(() => {
     const evaluate = (email: string | null | undefined) => {
-      const ok = !!email && email.toLowerCase() === ALLOWED_EMAIL.toLowerCase();
-      setAuthorized(ok);
+      setAuthorized(!!email);
     };
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) =>
       evaluate(session?.user?.email),

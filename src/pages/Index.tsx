@@ -39,11 +39,9 @@ const Index = () => {
       <header className="border-b border-border bg-card/50 backdrop-blur">
         <div className="container flex items-center justify-between py-4">
           <div>
-            <h1 className="text-xl font-bold tracking-tight">
-              Kalshi BTC Market Maker
-            </h1>
+            <h1 className="text-xl font-bold tracking-tight">K15M AMM</h1>
             <p className="text-xs text-muted-foreground">
-              Avellaneda–Stoikov · Hourly BTC range markets · Local browser bot
+              Avellaneda–Stoikov · Hourly Kalshi BTC range markets · Local browser bot
             </p>
           </div>
           <Button
