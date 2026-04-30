@@ -195,9 +195,9 @@ function EmptyDiagnostic({
   } else if (state.kind === "empty-ok") {
     Icon = CheckCircle2;
     tone = "warn";
-    title = "Connected, but no hourly BTC markets are open";
+    title = "Connected, but no 15-minute BTC markets are open";
     detail =
-      "Kalshi has no open KXBTC hourly range markets right now (between cycles, or the series is paused). Try again in a few minutes.";
+      "Kalshi has no open KXBTC 15-minute markets right now (between cycles, or the series is paused). Try again in a minute.";
   }
 
   const toneClass =
