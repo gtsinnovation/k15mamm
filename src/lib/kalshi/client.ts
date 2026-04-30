@@ -172,15 +172,16 @@ export class KalshiClient {
   }
 
   /**
-   * Fetch hourly BTC "Price and Above" markets — single-strike YES/NO
-   * contracts that pay YES if BTC ≥ floor_strike at expiry. These have a
-   * floor_strike and NO cap_strike (strike_type = "greater" / "above").
-   * Range contracts (both floor & cap) are excluded.
+   * Fetch BTC 15-minute markets — short-cycle range/above contracts that
+   * settle every 15 minutes. We probe the known KXBTC* 15-min series
+   * tickers, then fall back to a broad open-markets scan filtered by
+   * `isBtc15MinMarket` (BTC + has strike + closes within ~30 min).
    */
-  async getBtcHourlyMarkets(): Promise<KalshiMarket[]> {
-    // Kalshi's BTC "above" hourly series tickers. KXBTC is the current
-    // hourly above-series; the others are kept for backwards compatibility.
-    const candidateSeries = ["KXBTC", "KXBTCD", "KXBTCH"];
+  async getBtc15MinMarkets(): Promise<KalshiMarket[]> {
+    // Kalshi's BTC 15-minute series tickers. KXBTC is the primary
+    // 15-minute series; the others are kept for backwards compatibility
+    // and to catch series renames.
+    const candidateSeries = ["KXBTC", "KXBTCD", "KXBTCH", "KXBTC15"];
     const collected = new Map<string, KalshiMarket>();
 
     for (const series of candidateSeries) {
@@ -195,14 +196,14 @@ export class KalshiClient {
           `/markets?${q.toString()}`
         );
         for (const m of r.markets ?? []) {
-          if (isBtcAboveHourly(m)) collected.set(m.ticker, m);
+          if (isBtc15MinMarket(m)) collected.set(m.ticker, m);
         }
       } catch {
         // some series tickers may 404 — keep trying
       }
     }
 
-    // Fallback: broad scan of open markets, then filter to BTC hourly "above".
+    // Fallback: broad scan of open markets, then filter to BTC 15-min.
     if (collected.size === 0) {
       try {
         const q = new URLSearchParams({ status: "open", limit: "1000" });
@@ -211,7 +212,7 @@ export class KalshiClient {
           `/markets?${q.toString()}`
         );
         for (const m of r.markets ?? []) {
-          if (isBtcAboveHourly(m)) collected.set(m.ticker, m);
+          if (isBtc15MinMarket(m)) collected.set(m.ticker, m);
         }
       } catch {
         // ignore — return whatever we have
@@ -219,6 +220,11 @@ export class KalshiClient {
     }
 
     return Array.from(collected.values());
+  }
+
+  /** @deprecated Use getBtc15MinMarkets — kept as a thin alias for older callers. */
+  getBtcHourlyMarkets(): Promise<KalshiMarket[]> {
+    return this.getBtc15MinMarkets();
   }
 
   getOrderbook(ticker: string): Promise<{ orderbook: KalshiOrderbook }> {
