@@ -394,6 +394,21 @@ export const useBotStore = create<BotState>()(
         })),
       resetCycleStats: () =>
         set({ cycleStartEquity: 0, cycleStartTs: 0, consecutiveLosingCycles: 0 }),
+
+      circuitBreakerTrip: null,
+      setCircuitBreakerTrip: (t) => set({ circuitBreakerTrip: t }),
+      acknowledgeCircuitBreaker: () =>
+        set((s) =>
+          s.circuitBreakerTrip
+            ? { circuitBreakerTrip: { ...s.circuitBreakerTrip, acknowledgedAt: Date.now() } }
+            : {},
+        ),
+
+      lastMinuteDropDollars: 0,
+      setLastMinuteDropDollars: (n) => set({ lastMinuteDropDollars: n }),
+
+      autoRefreshEnabled: true,
+      setAutoRefreshEnabled: (b) => set({ autoRefreshEnabled: b }),
     }),
     {
       name: "kalshi-mm-store",
@@ -403,6 +418,7 @@ export const useBotStore = create<BotState>()(
         trackedTickers: s.trackedTickers,
         encryptedCredentials: s.encryptedCredentials,
         idleLockMinutes: s.idleLockMinutes,
+        autoRefreshEnabled: s.autoRefreshEnabled,
       }),
     }
   )
