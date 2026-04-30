@@ -62,6 +62,12 @@ export interface RiskLimits {
    * auto-pauses. 0 disables.
    */
   intraCycleDrawdownDollars: number;
+  /**
+   * Circuit breaker: if equity falls more than this many dollars within any
+   * rolling 60-second window, the bot auto-pauses (kill-switch, no flatten).
+   * Cooldown enforced via UI re-arm. 0 disables.
+   */
+  maxLossPerMinuteDollars: number;
 }
 
 export interface MarketQuote {
