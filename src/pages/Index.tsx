@@ -46,12 +46,14 @@ const Index = () => {
             </p>
           </div>
           <Button
+            asChild
             variant={hasAnyCreds ? "outline" : "default"}
             size="sm"
-            onClick={() => setTab("settings")}
           >
-            <KeyRound className="mr-2 h-4 w-4" />
-            {hasAnyCreds ? "Manage credentials" : "Add API credentials"}
+            <Link to="/credentials">
+              <KeyRound className="mr-2 h-4 w-4" />
+              {hasAnyCreds ? "Manage credentials" : "Add API credentials"}
+            </Link>
           </Button>
         </div>
       </header>
