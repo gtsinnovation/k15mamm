@@ -5,6 +5,23 @@ import type { EncryptedCredentials } from "./security/vault";
 import { appendAuditEntry } from "./audit/logStore";
 
 export type RunState = "idle" | "running" | "paused" | "killed";
+
+export interface CircuitBreakerTrip {
+  /** Type of stop that triggered the kill switch. */
+  type: "max-loss-per-minute" | "daily-stop-loss" | "consecutive-losing-cycles" | "intra-cycle-drawdown";
+  /** Human-readable reason for the audit log + UI. */
+  reason: string;
+  /** $ drop measured in the rolling 60s window (only for max-loss/min). */
+  dropDollars?: number;
+  /** Configured limit ($) at the time of trip. */
+  limitDollars?: number;
+  /** Equity at trip ($). */
+  equityAtTrip?: number;
+  /** When the trip happened (ms). */
+  ts: number;
+  /** When (and by which limits) the user re-armed; cleared on next trip. */
+  acknowledgedAt?: number;
+}
 export type LogLevel = "info" | "warn" | "error" | "quote" | "fill";
 
 export interface LogEntry {
