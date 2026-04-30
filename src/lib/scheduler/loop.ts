@@ -467,6 +467,44 @@ async function tick() {
         await killAll(true);
       }
     }
+
+    // 15-minute cycle stops. Cycles align to wall-clock quarter hours
+    // (:00, :15, :30, :45) — same cadence as Kalshi's BTC 15-min markets.
+    const QUARTER_MS = 15 * 60 * 1000;
+    const nowMs = Date.now();
+    const currentCycleStart = Math.floor(nowMs / QUARTER_MS) * QUARTER_MS;
+    if (st.cycleStartTs !== currentCycleStart) {
+      // First tick of a new cycle. Settle the previous cycle's P&L (if any),
+      // update the consecutive-losing-cycles counter, then snapshot equity
+      // for the new cycle.
+      if (st.cycleStartTs > 0) {
+        const cyclePnl = equity - st.cycleStartEquity;
+        const lost = cyclePnl < 0;
+        st.recordCycleResult(lost);
+        st.log(
+          lost ? "warn" : "info",
+          `cycle settled: ${cyclePnl >= 0 ? "+" : ""}$${cyclePnl.toFixed(2)} ` +
+            `(${useBotStore.getState().consecutiveLosingCycles} consecutive losing)`,
+        );
+        const consec = useBotStore.getState().consecutiveLosingCycles;
+        const limit = st.risk.maxConsecutiveLosingCycles;
+        if (limit > 0 && consec >= limit) {
+          st.log("error", `cycle stop: ${consec} consecutive losing 15-min cycles`);
+          await killAll(true);
+        }
+      }
+      st.setCycleSnapshot(equity, currentCycleStart);
+    } else if (st.cycleStartEquity > 0 && st.risk.intraCycleDrawdownDollars > 0) {
+      // Mid-cycle: enforce intra-cycle drawdown.
+      const intraPnl = equity - st.cycleStartEquity;
+      if (intraPnl <= -st.risk.intraCycleDrawdownDollars) {
+        st.log(
+          "error",
+          `intra-cycle drawdown stop: ${intraPnl.toFixed(2)} (limit -$${st.risk.intraCycleDrawdownDollars})`,
+        );
+        await killAll(true);
+      }
+    }
   } catch (e) {
     s.log("error", `tick: ${(e as Error).message}`);
   } finally {
