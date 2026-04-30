@@ -419,6 +419,7 @@ export const useBotStore = create<BotState>()(
         encryptedCredentials: s.encryptedCredentials,
         idleLockMinutes: s.idleLockMinutes,
         autoRefreshEnabled: s.autoRefreshEnabled,
+        circuitBreakerTrip: s.circuitBreakerTrip,
       }),
     }
   )
