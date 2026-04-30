@@ -239,6 +239,7 @@ const DEFAULT_RISK: RiskLimits = {
   maxOpenOrders: 20,
   maxConsecutiveLosingCycles: 3,
   intraCycleDrawdownDollars: 25,
+  maxLossPerMinuteDollars: 50,
 };
 
 export const useBotStore = create<BotState>()(
