@@ -45,16 +45,28 @@ const Index = () => {
               Avellaneda–Stoikov · Kalshi BTC 15-minute contracts · Local browser bot
             </p>
           </div>
-          <Button
-            asChild
-            variant={hasAnyCreds ? "outline" : "default"}
-            size="sm"
-          >
-            <Link to="/credentials">
-              <KeyRound className="mr-2 h-4 w-4" />
-              {hasAnyCreds ? "Manage credentials" : "Add API credentials"}
-            </Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button asChild variant="ghost" size="sm">
+              <Link to="/backtest">
+                <History className="mr-2 h-4 w-4" /> Backtest
+              </Link>
+            </Button>
+            <Button asChild variant="ghost" size="sm">
+              <Link to="/audit">
+                <ScrollText className="mr-2 h-4 w-4" /> Audit log
+              </Link>
+            </Button>
+            <Button
+              asChild
+              variant={hasAnyCreds ? "outline" : "default"}
+              size="sm"
+            >
+              <Link to="/credentials">
+                <KeyRound className="mr-2 h-4 w-4" />
+                {hasAnyCreds ? "Manage credentials" : "Add API credentials"}
+              </Link>
+            </Button>
+          </div>
         </div>
       </header>
       <main className="container space-y-6 py-6">
