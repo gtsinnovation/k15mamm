@@ -160,7 +160,7 @@ function EmptyDiagnostic({
 }) {
   let Icon = Inbox;
   let title = "No markets loaded";
-  let detail = "Click Refresh to fetch BTC hourly markets from Kalshi.";
+  let detail = "Click Refresh to fetch BTC 15-minute markets from Kalshi.";
   let tone: "muted" | "warn" | "error" = "muted";
 
   if (state.kind === "no-creds") {
