@@ -16,7 +16,7 @@ export default function Privacy() {
           <section className="space-y-2">
             <h2 className="text-lg font-semibold">What we collect</h2>
             <p>
-              Kalshi BTC Market Maker is a local-first application. The minimum data
+              K15M AMM is a local-first application. The minimum data
               necessary for the app to function is:
             </p>
             <ul className="list-disc pl-6">

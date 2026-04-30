@@ -1,7 +1,7 @@
 {
-  "name": "Kalshi BTC Market Maker",
-  "short_name": "Kalshi MM",
-  "description": "Local-first Avellaneda–Stoikov market maker for Kalshi hourly BTC markets.",
+  "name": "K15M AMM",
+  "short_name": "K15M AMM",
+  "description": "K15M AMM: local-first Avellaneda–Stoikov automated market maker for Kalshi hourly BTC markets.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
