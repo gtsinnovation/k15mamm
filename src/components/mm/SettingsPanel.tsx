@@ -380,11 +380,43 @@ export function SettingsPanel() {
         <div className="grid grid-cols-2 gap-2">
           <div className="space-y-1.5">
             <Label htmlFor="vault-pp1" className="text-xs">Passphrase</Label>
-            <Input id="vault-pp1" type="password" value={passphrase} onChange={(e) => setPassphrase(e.target.value)} />
+            <div className="relative">
+              <Input
+                id="vault-pp1"
+                type={showPass1 ? "text" : "password"}
+                value={passphrase}
+                onChange={(e) => setPassphrase(e.target.value)}
+                className="pr-9"
+              />
+              <button
+                type="button"
+                aria-label={showPass1 ? "Hide passphrase" : "Show passphrase"}
+                onClick={() => setShowPass1((v) => !v)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                {showPass1 ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="vault-pp2" className="text-xs">Confirm</Label>
-            <Input id="vault-pp2" type="password" value={passphrase2} onChange={(e) => setPassphrase2(e.target.value)} />
+            <div className="relative">
+              <Input
+                id="vault-pp2"
+                type={showPass2 ? "text" : "password"}
+                value={passphrase2}
+                onChange={(e) => setPassphrase2(e.target.value)}
+                className="pr-9"
+              />
+              <button
+                type="button"
+                aria-label={showPass2 ? "Hide passphrase" : "Show passphrase"}
+                onClick={() => setShowPass2((v) => !v)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                {showPass2 ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
           </div>
         </div>
         <div className="flex items-center justify-between border-t border-border pt-3">
