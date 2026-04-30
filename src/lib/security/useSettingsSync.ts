@@ -17,8 +17,10 @@ import { useBotStore, type RiskLimits, type StrategyParams } from "@/lib/store";
 export function useSettingsSync() {
   const risk = useBotStore((s) => s.risk);
   const strategy = useBotStore((s) => s.strategy);
+  const autoRefreshEnabled = useBotStore((s) => s.autoRefreshEnabled);
   const setRisk = useBotStore((s) => s.setRisk);
   const setStrategy = useBotStore((s) => s.setStrategy);
+  const setAutoRefreshEnabled = useBotStore((s) => s.setAutoRefreshEnabled);
 
   const userIdRef = useRef<string | null>(null);
   const loadedRef = useRef(false);
