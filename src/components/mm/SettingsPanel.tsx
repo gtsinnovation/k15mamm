@@ -9,7 +9,7 @@ import { useBotStore } from "@/lib/store";
 import { KalshiClient, CLOUD_PROXY } from "@/lib/kalshi/client";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
-import { AlertTriangle, CheckCircle2, Loader2, Lock, ShieldAlert, ShieldCheck, Trash2, AlertOctagon } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Loader2, Lock, ShieldAlert, ShieldCheck, Trash2, AlertOctagon, Eye, EyeOff } from "lucide-react";
 import type { KalshiEnv } from "@/lib/kalshi/types";
 import {
   validatePem,
