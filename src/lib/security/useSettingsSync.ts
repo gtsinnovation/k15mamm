@@ -17,8 +17,10 @@ import { useBotStore, type RiskLimits, type StrategyParams } from "@/lib/store";
 export function useSettingsSync() {
   const risk = useBotStore((s) => s.risk);
   const strategy = useBotStore((s) => s.strategy);
+  const autoRefreshEnabled = useBotStore((s) => s.autoRefreshEnabled);
   const setRisk = useBotStore((s) => s.setRisk);
   const setStrategy = useBotStore((s) => s.setStrategy);
+  const setAutoRefreshEnabled = useBotStore((s) => s.setAutoRefreshEnabled);
 
   const userIdRef = useRef<string | null>(null);
   const loadedRef = useRef(false);
@@ -31,7 +33,7 @@ export function useSettingsSync() {
     const loadFor = async (userId: string) => {
       const { data, error } = await supabase
         .from("user_settings")
-        .select("risk, strategy")
+        .select("risk, strategy, preferences")
         .eq("user_id", userId)
         .maybeSingle();
       if (cancelled) return;
@@ -40,6 +42,10 @@ export function useSettingsSync() {
       } else if (data) {
         if (data.risk) setRisk(data.risk as Partial<RiskLimits>);
         if (data.strategy) setStrategy(data.strategy as Partial<StrategyParams>);
+        const prefs = (data.preferences ?? {}) as { autoRefreshEnabled?: boolean };
+        if (typeof prefs.autoRefreshEnabled === "boolean") {
+          setAutoRefreshEnabled(prefs.autoRefreshEnabled);
+        }
       }
       loadedRef.current = true;
     };
@@ -69,7 +75,7 @@ export function useSettingsSync() {
     };
   }, [setRisk, setStrategy]);
 
-  // Debounced write whenever risk/strategy change (after initial load).
+  // Debounced write whenever risk/strategy/prefs change (after initial load).
   useEffect(() => {
     if (!loadedRef.current) return;
     const uid = userIdRef.current;
@@ -79,7 +85,12 @@ export function useSettingsSync() {
       const { error } = await supabase
         .from("user_settings")
         .upsert(
-          [{ user_id: uid, risk: risk as never, strategy: strategy as never }],
+          [{
+            user_id: uid,
+            risk: risk as never,
+            strategy: strategy as never,
+            preferences: { autoRefreshEnabled } as never,
+          }],
           { onConflict: "user_id" },
         );
       if (error) {
@@ -91,5 +102,5 @@ export function useSettingsSync() {
         window.clearTimeout(writeTimerRef.current);
       }
     };
-  }, [risk, strategy]);
+  }, [risk, strategy, autoRefreshEnabled]);
 }

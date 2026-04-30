@@ -33,15 +33,48 @@ const Index = () => {
   useSettingsSync();
   const hasAnyCreds = !!credentials || !!encryptedCredentials;
 
+  const [pollStatus, setPollStatus] = useState<{ intervalMs: number; lastOkAt: number; throttled: boolean; reason: string }>({
+    intervalMs: 0,
+    lastOkAt: 0,
+    throttled: false,
+    reason: "idle",
+  });
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    const i = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(i);
+  }, []);
+
   // Prefetch BTC spot via the centralized rate-limit-aware poller so the
   // pre-start simulation has a price ready even before the bot is running.
   // Gated on the auto-refresh toggle so users can pause background polling.
   useEffect(() => {
-    if (!autoRefresh) return;
-    return subscribeSpot((price) => {
+    if (!autoRefresh) {
+      setPollStatus((s) => ({ ...s, reason: "paused" }));
+      return;
+    }
+    return subscribeSpot((price, status) => {
       if (price != null) useBotStore.getState().setBtcSpot(price);
+      setPollStatus({
+        intervalMs: status.intervalMs,
+        lastOkAt: status.lastOkAt,
+        throttled: status.throttled,
+        reason: status.reason,
+      });
     });
   }, [autoRefresh]);
+
+  const intervalLabel = pollStatus.intervalMs
+    ? pollStatus.intervalMs >= 1000
+      ? `${Math.round(pollStatus.intervalMs / 1000)}s`
+      : `${pollStatus.intervalMs}ms`
+    : "—";
+  const lastRefreshLabel = !autoRefresh
+    ? "paused"
+    : pollStatus.lastOkAt
+      ? `${Math.max(0, Math.round((now - pollStatus.lastOkAt) / 1000))}s ago`
+      : "never";
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -57,7 +90,7 @@ const Index = () => {
           <div className="flex items-center gap-2">
             <div className="mr-1 flex items-center gap-2 rounded-md border border-border bg-background/40 px-2.5 py-1.5">
               <RefreshCw
-                className={`h-3.5 w-3.5 ${autoRefresh ? "text-success" : "text-muted-foreground"}`}
+                className={`h-3.5 w-3.5 ${autoRefresh ? (pollStatus.throttled ? "text-warning" : "text-success") : "text-muted-foreground"}`}
               />
               <Label htmlFor="auto-refresh" className="text-xs">
                 Auto-refresh
@@ -67,6 +100,25 @@ const Index = () => {
                 checked={autoRefresh}
                 onCheckedChange={setAutoRefresh}
               />
+              <div
+                className="ml-1 flex flex-col leading-tight border-l border-border pl-2"
+                title={`Poll reason: ${pollStatus.reason}`}
+              >
+                <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                  every {intervalLabel}
+                </span>
+                <span
+                  className={`font-mono text-[10px] ${
+                    !autoRefresh
+                      ? "text-muted-foreground"
+                      : pollStatus.lastOkAt && now - pollStatus.lastOkAt < pollStatus.intervalMs * 2
+                        ? "text-success"
+                        : "text-warning"
+                  }`}
+                >
+                  {lastRefreshLabel}
+                </span>
+              </div>
             </div>
             <Button asChild variant="ghost" size="sm">
               <Link to="/backtest">
