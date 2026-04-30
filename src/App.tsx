@@ -12,6 +12,7 @@ import { RiskDisclaimerGate } from "@/components/RiskDisclaimerGate";
 const Index = lazy(() => import("./pages/Index.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 const Privacy = lazy(() => import("./pages/Privacy.tsx"));
+const Credentials = lazy(() => import("./pages/Credentials.tsx"));
 
 const queryClient = new QueryClient();
 
