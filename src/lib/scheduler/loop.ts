@@ -647,3 +647,20 @@ export function restartTimerIfRunning() {
     timer = window.setInterval(tick, s.strategy.tickIntervalMs);
   }
 }
+
+/**
+ * Re-arm the bot after a circuit-breaker stop. Clears the trip record,
+ * resets the rolling-drop snapshot and cycle stats, returns the bot to the
+ * idle state so the user can press Start again. Called only after the user
+ * has reviewed and confirmed the (possibly updated) risk limits.
+ */
+export function rearm() {
+  const s = useBotStore.getState();
+  s.setCircuitBreakerTrip(null);
+  s.setLastMinuteDropDollars(0);
+  s.resetCycleStats();
+  s.setSessionStartEquity(0);
+  s.resetPnlHistory();
+  s.setRunState("idle");
+  s.log("info", "Bot re-armed after circuit-breaker stop");
+}
