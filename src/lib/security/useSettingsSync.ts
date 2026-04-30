@@ -75,7 +75,7 @@ export function useSettingsSync() {
     };
   }, [setRisk, setStrategy]);
 
-  // Debounced write whenever risk/strategy change (after initial load).
+  // Debounced write whenever risk/strategy/prefs change (after initial load).
   useEffect(() => {
     if (!loadedRef.current) return;
     const uid = userIdRef.current;
@@ -85,7 +85,12 @@ export function useSettingsSync() {
       const { error } = await supabase
         .from("user_settings")
         .upsert(
-          [{ user_id: uid, risk: risk as never, strategy: strategy as never }],
+          [{
+            user_id: uid,
+            risk: risk as never,
+            strategy: strategy as never,
+            preferences: { autoRefreshEnabled } as never,
+          }],
           { onConflict: "user_id" },
         );
       if (error) {
@@ -97,5 +102,5 @@ export function useSettingsSync() {
         window.clearTimeout(writeTimerRef.current);
       }
     };
-  }, [risk, strategy]);
+  }, [risk, strategy, autoRefreshEnabled]);
 }
