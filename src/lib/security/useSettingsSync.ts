@@ -79,7 +79,7 @@ export function useSettingsSync() {
       const { error } = await supabase
         .from("user_settings")
         .upsert(
-          { user_id: uid, risk, strategy },
+          [{ user_id: uid, risk: risk as never, strategy: strategy as never }],
           { onConflict: "user_id" },
         );
       if (error) {
