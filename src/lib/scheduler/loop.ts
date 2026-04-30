@@ -568,6 +568,10 @@ export function start() {
     s.log("error", "Cannot start: credentials missing");
     return;
   }
+  if (s.circuitBreakerTrip && !s.circuitBreakerTrip.acknowledgedAt) {
+    s.log("error", "Cannot start: circuit breaker tripped — re-arm first");
+    return;
+  }
   if (s.sessionStartEquity === 0) s.setSessionStartEquity(s.balance);
   s.resetCycleStats();
   s.setRunState("running");
