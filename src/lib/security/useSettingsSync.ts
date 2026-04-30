@@ -33,21 +33,19 @@ export function useSettingsSync() {
     const loadFor = async (userId: string) => {
       const { data, error } = await supabase
         .from("user_settings")
-        .select("risk, strategy")
+        .select("risk, strategy, preferences")
         .eq("user_id", userId)
         .maybeSingle();
       if (cancelled) return;
       if (error) {
         console.warn("user_settings load failed", error.message);
       } else if (data) {
-        if (data.risk) {
-          const r = data.risk as Partial<RiskLimits> & { autoRefreshEnabled?: boolean };
-          setRisk(r);
-          if (typeof r.autoRefreshEnabled === "boolean") {
-            setAutoRefreshEnabled(r.autoRefreshEnabled);
-          }
-        }
+        if (data.risk) setRisk(data.risk as Partial<RiskLimits>);
         if (data.strategy) setStrategy(data.strategy as Partial<StrategyParams>);
+        const prefs = (data.preferences ?? {}) as { autoRefreshEnabled?: boolean };
+        if (typeof prefs.autoRefreshEnabled === "boolean") {
+          setAutoRefreshEnabled(prefs.autoRefreshEnabled);
+        }
       }
       loadedRef.current = true;
     };
