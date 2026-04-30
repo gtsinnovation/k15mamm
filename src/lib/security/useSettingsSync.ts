@@ -40,7 +40,13 @@ export function useSettingsSync() {
       if (error) {
         console.warn("user_settings load failed", error.message);
       } else if (data) {
-        if (data.risk) setRisk(data.risk as Partial<RiskLimits>);
+        if (data.risk) {
+          const r = data.risk as Partial<RiskLimits> & { autoRefreshEnabled?: boolean };
+          setRisk(r);
+          if (typeof r.autoRefreshEnabled === "boolean") {
+            setAutoRefreshEnabled(r.autoRefreshEnabled);
+          }
+        }
         if (data.strategy) setStrategy(data.strategy as Partial<StrategyParams>);
       }
       loadedRef.current = true;
