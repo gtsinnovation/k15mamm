@@ -81,6 +81,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<GatedHome />} />
+          <Route path="/credentials" element={<GatedCredentials />} />
           <Route
             path="/privacy"
             element={
