@@ -15,7 +15,7 @@ import { useIdleLock } from "@/lib/security/useIdleLock";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useBotStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
-import { KeyRound } from "lucide-react";
+import { KeyRound, History, ScrollText } from "lucide-react";
 import { Link } from "react-router-dom";
 import { subscribeSpot } from "@/lib/kalshi/spotPoll";
 
