@@ -345,6 +345,18 @@ export const useBotStore = create<BotState>()(
 
       idleLockMinutes: 15,
       setIdleLockMinutes: (n) => set({ idleLockMinutes: n }),
+
+      cycleStartEquity: 0,
+      cycleStartTs: 0,
+      consecutiveLosingCycles: 0,
+      setCycleSnapshot: (equity, ts) =>
+        set({ cycleStartEquity: equity, cycleStartTs: ts }),
+      recordCycleResult: (loss) =>
+        set((s) => ({
+          consecutiveLosingCycles: loss ? s.consecutiveLosingCycles + 1 : 0,
+        })),
+      resetCycleStats: () =>
+        set({ cycleStartEquity: 0, cycleStartTs: 0, consecutiveLosingCycles: 0 }),
     }),
     {
       name: "kalshi-mm-store",
