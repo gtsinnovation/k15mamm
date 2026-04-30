@@ -110,6 +110,7 @@ const Index = () => {
                 <ActivityLog />
               </div>
               <div className="space-y-6">
+                <CircuitBreakerPanel />
                 <StrategyPanel />
                 <RiskPanel />
               </div>
