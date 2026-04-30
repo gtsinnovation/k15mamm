@@ -1,0 +1,10 @@
+Contact: mailto:gbsahn@gmail.com
+Expires: 2027-01-01T00:00:00.000Z
+Preferred-Languages: en
+Canonical: https://ammkalshi.webpwa.io/.well-known/security.txt
+Policy: https://ammkalshi.webpwa.io/privacy
+
+# Responsible disclosure
+# Please report security issues privately to the contact above before public
+# disclosure. This app is in private beta; please include reproduction steps,
+# affected version (commit hash if possible), and your assessment of impact.
