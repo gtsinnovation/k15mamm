@@ -218,6 +218,9 @@ const DEFAULT_RISK: RiskLimits = {
   dailyStopLossDollars: 100,
   autoFlattenOnStop: false,
   collateralSafetyPct: 95,
+  maxOpenOrders: 20,
+  maxConsecutiveLosingCycles: 3,
+  intraCycleDrawdownDollars: 25,
 };
 
 export const useBotStore = create<BotState>()(
