@@ -71,11 +71,11 @@ async function waitForCancels(client: KalshiClient, ticker: string, maxWaitMs = 
 
 async function refreshMarkets(client: KalshiClient) {
   try {
-    const markets = await client.getBtcHourlyMarkets();
+    const markets = await client.getBtc15MinMarkets();
     useBotStore.getState().setMarkets(markets);
     useBotStore
       .getState()
-      .log("info", `loaded ${markets.length} BTC hourly markets`);
+      .log("info", `loaded ${markets.length} BTC 15-min markets`);
   } catch (e) {
     useBotStore.getState().log("warn", `refreshMarkets: ${errorMessage(e)}`);
   }
