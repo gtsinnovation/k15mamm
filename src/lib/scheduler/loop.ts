@@ -464,6 +464,13 @@ async function tick() {
       const dayPnl = equity - st.sessionStartEquity;
       if (dayPnl <= -st.risk.dailyStopLossDollars) {
         st.log("error", `daily stop-loss hit (${dayPnl.toFixed(2)})`);
+        st.setCircuitBreakerTrip({
+          type: "daily-stop-loss",
+          reason: `Daily stop-loss hit: $${dayPnl.toFixed(2)} (limit -$${st.risk.dailyStopLossDollars})`,
+          equityAtTrip: equity,
+          limitDollars: st.risk.dailyStopLossDollars,
+          ts: Date.now(),
+        });
         await killAll(true);
       }
     }
@@ -471,21 +478,30 @@ async function tick() {
     // Circuit breaker: max loss within a rolling 60-second window. Uses the
     // pnlHistory we just pushed to find the highest equity in the last 60s
     // and trips if the current draw from that peak exceeds the limit.
-    if (st.risk.maxLossPerMinuteDollars > 0) {
+    {
       const cutoff = Date.now() - 60_000;
       const window = useBotStore
         .getState()
         .pnlHistory.filter((p) => p.ts >= cutoff);
       if (window.length >= 2) {
         const peak = window.reduce((m, p) => (p.equity > m ? p.equity : m), -Infinity);
-        const drop = peak - equity;
-        if (drop >= st.risk.maxLossPerMinuteDollars) {
-          st.log(
-            "error",
-            `circuit breaker: $${drop.toFixed(2)} drop in last 60s (limit $${st.risk.maxLossPerMinuteDollars})`,
-          );
+        const drop = Math.max(0, peak - equity);
+        st.setLastMinuteDropDollars(drop);
+        if (st.risk.maxLossPerMinuteDollars > 0 && drop >= st.risk.maxLossPerMinuteDollars) {
+          const reason = `Max-loss/min circuit breaker: $${drop.toFixed(2)} drop in last 60s (limit $${st.risk.maxLossPerMinuteDollars})`;
+          st.log("error", `circuit breaker: ${reason}`);
+          st.setCircuitBreakerTrip({
+            type: "max-loss-per-minute",
+            reason,
+            dropDollars: drop,
+            limitDollars: st.risk.maxLossPerMinuteDollars,
+            equityAtTrip: equity,
+            ts: Date.now(),
+          });
           await killAll(st.risk.autoFlattenOnStop);
         }
+      } else {
+        st.setLastMinuteDropDollars(0);
       }
     }
 
@@ -510,7 +526,15 @@ async function tick() {
         const consec = useBotStore.getState().consecutiveLosingCycles;
         const limit = st.risk.maxConsecutiveLosingCycles;
         if (limit > 0 && consec >= limit) {
-          st.log("error", `cycle stop: ${consec} consecutive losing 15-min cycles`);
+          const reason = `${consec} consecutive losing 15-min cycles (limit ${limit})`;
+          st.log("error", `cycle stop: ${reason}`);
+          st.setCircuitBreakerTrip({
+            type: "consecutive-losing-cycles",
+            reason,
+            equityAtTrip: equity,
+            limitDollars: limit,
+            ts: Date.now(),
+          });
           await killAll(true);
         }
       }
@@ -519,10 +543,15 @@ async function tick() {
       // Mid-cycle: enforce intra-cycle drawdown.
       const intraPnl = equity - st.cycleStartEquity;
       if (intraPnl <= -st.risk.intraCycleDrawdownDollars) {
-        st.log(
-          "error",
-          `intra-cycle drawdown stop: ${intraPnl.toFixed(2)} (limit -$${st.risk.intraCycleDrawdownDollars})`,
-        );
+        const reason = `Intra-cycle drawdown $${intraPnl.toFixed(2)} (limit -$${st.risk.intraCycleDrawdownDollars})`;
+        st.log("error", `intra-cycle drawdown stop: ${reason}`);
+        st.setCircuitBreakerTrip({
+          type: "intra-cycle-drawdown",
+          reason,
+          equityAtTrip: equity,
+          limitDollars: st.risk.intraCycleDrawdownDollars,
+          ts: Date.now(),
+        });
         await killAll(true);
       }
     }
@@ -537,6 +566,10 @@ export function start() {
   const s = useBotStore.getState();
   if (!s.credentials) {
     s.log("error", "Cannot start: credentials missing");
+    return;
+  }
+  if (s.circuitBreakerTrip && !s.circuitBreakerTrip.acknowledgedAt) {
+    s.log("error", "Cannot start: circuit breaker tripped — re-arm first");
     return;
   }
   if (s.sessionStartEquity === 0) s.setSessionStartEquity(s.balance);
@@ -617,4 +650,21 @@ export function restartTimerIfRunning() {
     if (timer != null) window.clearInterval(timer);
     timer = window.setInterval(tick, s.strategy.tickIntervalMs);
   }
+}
+
+/**
+ * Re-arm the bot after a circuit-breaker stop. Clears the trip record,
+ * resets the rolling-drop snapshot and cycle stats, returns the bot to the
+ * idle state so the user can press Start again. Called only after the user
+ * has reviewed and confirmed the (possibly updated) risk limits.
+ */
+export function rearm() {
+  const s = useBotStore.getState();
+  s.setCircuitBreakerTrip(null);
+  s.setLastMinuteDropDollars(0);
+  s.resetCycleStats();
+  s.setSessionStartEquity(0);
+  s.resetPnlHistory();
+  s.setRunState("idle");
+  s.log("info", "Bot re-armed after circuit-breaker stop");
 }

@@ -5,6 +5,23 @@ import type { EncryptedCredentials } from "./security/vault";
 import { appendAuditEntry } from "./audit/logStore";
 
 export type RunState = "idle" | "running" | "paused" | "killed";
+
+export interface CircuitBreakerTrip {
+  /** Type of stop that triggered the kill switch. */
+  type: "max-loss-per-minute" | "daily-stop-loss" | "consecutive-losing-cycles" | "intra-cycle-drawdown";
+  /** Human-readable reason for the audit log + UI. */
+  reason: string;
+  /** $ drop measured in the rolling 60s window (only for max-loss/min). */
+  dropDollars?: number;
+  /** Configured limit ($) at the time of trip. */
+  limitDollars?: number;
+  /** Equity at trip ($). */
+  equityAtTrip?: number;
+  /** When the trip happened (ms). */
+  ts: number;
+  /** When (and by which limits) the user re-armed; cleared on next trip. */
+  acknowledgedAt?: number;
+}
 export type LogLevel = "info" | "warn" | "error" | "quote" | "fill";
 
 export interface LogEntry {
@@ -217,6 +234,19 @@ interface BotState {
   setCycleSnapshot: (equity: number, ts: number) => void;
   recordCycleResult: (loss: boolean) => void;
   resetCycleStats: () => void;
+
+  /** Most recent circuit-breaker trip; null until first trip or after re-arm reset. */
+  circuitBreakerTrip: CircuitBreakerTrip | null;
+  setCircuitBreakerTrip: (t: CircuitBreakerTrip | null) => void;
+  acknowledgeCircuitBreaker: () => void;
+
+  /** Rolling 60s drop snapshot (purely for the status panel). */
+  lastMinuteDropDollars: number;
+  setLastMinuteDropDollars: (n: number) => void;
+
+  /** Whether the dashboard scheduler/polling is allowed to run. */
+  autoRefreshEnabled: boolean;
+  setAutoRefreshEnabled: (b: boolean) => void;
 }
 
 const DEFAULT_STRATEGY: StrategyParams = {
@@ -364,6 +394,21 @@ export const useBotStore = create<BotState>()(
         })),
       resetCycleStats: () =>
         set({ cycleStartEquity: 0, cycleStartTs: 0, consecutiveLosingCycles: 0 }),
+
+      circuitBreakerTrip: null,
+      setCircuitBreakerTrip: (t) => set({ circuitBreakerTrip: t }),
+      acknowledgeCircuitBreaker: () =>
+        set((s) =>
+          s.circuitBreakerTrip
+            ? { circuitBreakerTrip: { ...s.circuitBreakerTrip, acknowledgedAt: Date.now() } }
+            : {},
+        ),
+
+      lastMinuteDropDollars: 0,
+      setLastMinuteDropDollars: (n) => set({ lastMinuteDropDollars: n }),
+
+      autoRefreshEnabled: true,
+      setAutoRefreshEnabled: (b) => set({ autoRefreshEnabled: b }),
     }),
     {
       name: "kalshi-mm-store",
@@ -373,6 +418,8 @@ export const useBotStore = create<BotState>()(
         trackedTickers: s.trackedTickers,
         encryptedCredentials: s.encryptedCredentials,
         idleLockMinutes: s.idleLockMinutes,
+        autoRefreshEnabled: s.autoRefreshEnabled,
+        circuitBreakerTrip: s.circuitBreakerTrip,
       }),
     }
   )
