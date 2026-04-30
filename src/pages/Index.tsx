@@ -90,7 +90,7 @@ const Index = () => {
           <div className="flex items-center gap-2">
             <div className="mr-1 flex items-center gap-2 rounded-md border border-border bg-background/40 px-2.5 py-1.5">
               <RefreshCw
-                className={`h-3.5 w-3.5 ${autoRefresh ? "text-success" : "text-muted-foreground"}`}
+                className={`h-3.5 w-3.5 ${autoRefresh ? (pollStatus.throttled ? "text-warning" : "text-success") : "text-muted-foreground"}`}
               />
               <Label htmlFor="auto-refresh" className="text-xs">
                 Auto-refresh
@@ -100,6 +100,25 @@ const Index = () => {
                 checked={autoRefresh}
                 onCheckedChange={setAutoRefresh}
               />
+              <div
+                className="ml-1 flex flex-col leading-tight border-l border-border pl-2"
+                title={`Poll reason: ${pollStatus.reason}`}
+              >
+                <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                  every {intervalLabel}
+                </span>
+                <span
+                  className={`font-mono text-[10px] ${
+                    !autoRefresh
+                      ? "text-muted-foreground"
+                      : pollStatus.lastOkAt && now - pollStatus.lastOkAt < pollStatus.intervalMs * 2
+                        ? "text-success"
+                        : "text-warning"
+                  }`}
+                >
+                  {lastRefreshLabel}
+                </span>
+              </div>
             </div>
             <Button asChild variant="ghost" size="sm">
               <Link to="/backtest">
