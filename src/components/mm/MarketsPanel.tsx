@@ -37,12 +37,12 @@ export function MarketsPanel() {
       }
       // Step 2: actual fetch
       const client = new KalshiClient(credentials);
-      const ms = await client.getBtcHourlyMarkets();
+      const ms = await client.getBtc15MinMarkets();
       setMarkets(ms);
-      log("info", `manual refresh: loaded ${ms.length} BTC hourly markets`);
+      log("info", `manual refresh: loaded ${ms.length} BTC 15-min markets`);
       if (ms.length === 0) {
         setDiagnostic({ kind: "empty-ok" });
-        toast.warning("No BTC hourly markets returned by Kalshi");
+        toast.warning("No BTC 15-min markets returned by Kalshi");
       } else {
         setDiagnostic({ kind: "idle" });
         toast.success(`Loaded ${ms.length} markets`);
