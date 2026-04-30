@@ -383,8 +383,8 @@ function NoMarketsEnabled({
       <div className="flex items-start gap-2">
         <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
         <div>
-          <strong>No markets are enabled.</strong> Pick at least one BTC hourly
-          "Price and Above" market to quote, or enable them all. You can change
+          <strong>No markets are enabled.</strong> Pick at least one BTC
+          15-minute market to quote, or enable them all. You can change
           this anytime from the Markets panel.
         </div>
       </div>
