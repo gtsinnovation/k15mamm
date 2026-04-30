@@ -96,7 +96,7 @@ export function ControlBar() {
       },
       {
         id: "markets",
-        label: "Loading BTC hourly markets",
+        label: "Loading BTC 15-minute markets",
         status: needsMarkets ? "pending" : "skipped",
         detail: needsMarkets ? "Kalshi /markets" : "Already loaded",
       },
