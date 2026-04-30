@@ -155,6 +155,15 @@ async function quoteMarket(
     return;
   }
 
+  // Risk: global cap on total resting orders.
+  if (s.risk.maxOpenOrders > 0) {
+    const restingCount = s.orderLedger.filter((e) => e.status === "resting").length;
+    if (restingCount >= s.risk.maxOpenOrders) {
+      s.log("warn", `max open orders reached (${restingCount}/${s.risk.maxOpenOrders})`, market.ticker);
+      return;
+    }
+  }
+
   // Build MarketState for the AS market-maker. Book prices come from
   // Kalshi in cents (1..99); the strategy operates in dollars (0.01..0.99).
   const expMs = new Date(market.expiration_time).getTime();
