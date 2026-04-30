@@ -234,6 +234,19 @@ interface BotState {
   setCycleSnapshot: (equity: number, ts: number) => void;
   recordCycleResult: (loss: boolean) => void;
   resetCycleStats: () => void;
+
+  /** Most recent circuit-breaker trip; null until first trip or after re-arm reset. */
+  circuitBreakerTrip: CircuitBreakerTrip | null;
+  setCircuitBreakerTrip: (t: CircuitBreakerTrip | null) => void;
+  acknowledgeCircuitBreaker: () => void;
+
+  /** Rolling 60s drop snapshot (purely for the status panel). */
+  lastMinuteDropDollars: number;
+  setLastMinuteDropDollars: (n: number) => void;
+
+  /** Whether the dashboard scheduler/polling is allowed to run. */
+  autoRefreshEnabled: boolean;
+  setAutoRefreshEnabled: (b: boolean) => void;
 }
 
 const DEFAULT_STRATEGY: StrategyParams = {
