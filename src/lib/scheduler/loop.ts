@@ -519,6 +519,7 @@ export function start() {
     return;
   }
   if (s.sessionStartEquity === 0) s.setSessionStartEquity(s.balance);
+  s.resetCycleStats();
   s.setRunState("running");
   s.log("info", "Bot started");
   if (timer != null) window.clearInterval(timer);
