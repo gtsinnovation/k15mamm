@@ -129,6 +129,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          preferences: Json | null
           risk: Json | null
           strategy: Json | null
           updated_at: string
@@ -137,6 +138,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          preferences?: Json | null
           risk?: Json | null
           strategy?: Json | null
           updated_at?: string
@@ -145,6 +147,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          preferences?: Json | null
           risk?: Json | null
           strategy?: Json | null
           updated_at?: string
