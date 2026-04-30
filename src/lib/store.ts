@@ -199,6 +199,18 @@ interface BotState {
   /** Idle auto-lock timeout in minutes. 0 disables. */
   idleLockMinutes: number;
   setIdleLockMinutes: (n: number) => void;
+
+  /**
+   * 15-minute cycle tracker. We snapshot equity at the start of each
+   * cycle and count consecutive losing cycles to enforce the
+   * `maxConsecutiveLosingCycles` and `intraCycleDrawdownDollars` stops.
+   */
+  cycleStartEquity: number;
+  cycleStartTs: number;
+  consecutiveLosingCycles: number;
+  setCycleSnapshot: (equity: number, ts: number) => void;
+  recordCycleResult: (loss: boolean) => void;
+  resetCycleStats: () => void;
 }
 
 const DEFAULT_STRATEGY: StrategyParams = {
