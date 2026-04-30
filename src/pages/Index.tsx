@@ -55,6 +55,19 @@ const Index = () => {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <div className="mr-1 flex items-center gap-2 rounded-md border border-border bg-background/40 px-2.5 py-1.5">
+              <RefreshCw
+                className={`h-3.5 w-3.5 ${autoRefresh ? "text-success" : "text-muted-foreground"}`}
+              />
+              <Label htmlFor="auto-refresh" className="text-xs">
+                Auto-refresh
+              </Label>
+              <Switch
+                id="auto-refresh"
+                checked={autoRefresh}
+                onCheckedChange={setAutoRefresh}
+              />
+            </div>
             <Button asChild variant="ghost" size="sm">
               <Link to="/backtest">
                 <History className="mr-2 h-4 w-4" /> Backtest
