@@ -92,6 +92,12 @@ export function RiskPanel() {
             min={0}
             onChange={(n) => setRisk({ intraCycleDrawdownDollars: n })}
           />
+          <Field
+            label="Max loss / 60s circuit breaker ($, 0 = off)"
+            value={risk.maxLossPerMinuteDollars}
+            min={0}
+            onChange={(n) => setRisk({ maxLossPerMinuteDollars: n })}
+          />
         </div>
         <div className="text-xs text-muted-foreground">
           Current streak:{" "}

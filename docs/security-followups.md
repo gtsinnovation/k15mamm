@@ -85,3 +85,36 @@ have a real CSP we want to monitor (i.e. once `'unsafe-inline'` is gone).
 production headers live in `public/_headers` (Netlify / Cloudflare
 Pages format). If the production host doesn't read that file, we'd need
 to set them at the CDN/edge.
+---
+
+## Audit remediation (2026-04-30)
+
+Implemented from the "Kalshi 15-Minute Bitcoin AMM" audit report:
+
+1. **Headers / CSP** — `public/_headers` upgraded: HSTS to 2 years,
+   Cross-Origin-Embedder-Policy: credentialless, `interest-cohort=()`,
+   `upgrade-insecure-requests`, dropped `unsafe-eval` from prod CSP, and
+   added explicit no-cache directives for `/sw.js` and the manifest.
+2. **Compression + chunking** — `vite-plugin-compression` (gzip + br) and
+   `manualChunks` for react / recharts / react-query. Terser with
+   `drop_console` in production.
+3. **Service worker** — `public/sw.js`: app-shell only (HTML
+   NetworkFirst, hashed assets cache-first). **Never caches** Kalshi /
+   Coinbase / Supabase / proxy responses. Registration in `src/main.tsx`
+   is gated against iframes and Lovable preview hosts so the editor
+   keeps working.
+4. **Circuit breaker** — `RiskLimits.maxLossPerMinuteDollars` enforced
+   in `src/lib/scheduler/loop.ts` against a rolling 60s peak of
+   `pnlHistory`; trips the kill switch (and optionally flattens) when
+   exceeded. Editable from `RiskPanel`.
+
+Explicitly **not** adopted from the audit (would regress security or
+correctness):
+
+- Replacing the encrypted vault with `localStorage`-backed credentials.
+- Replacing the Kalshi proxy/RSA-PSS signer with a `Bearer` token client.
+- Direct browser WebSocket to `api.kalshi.com` (would leak creds and
+  bypass the proxy).
+- A parallel `RiskManager15M` duplicating `RiskLimits` and the scheduler.
+- Caching Kalshi REST responses in the service worker (stale trading
+  data is dangerous).

@@ -468,6 +468,27 @@ async function tick() {
       }
     }
 
+    // Circuit breaker: max loss within a rolling 60-second window. Uses the
+    // pnlHistory we just pushed to find the highest equity in the last 60s
+    // and trips if the current draw from that peak exceeds the limit.
+    if (st.risk.maxLossPerMinuteDollars > 0) {
+      const cutoff = Date.now() - 60_000;
+      const window = useBotStore
+        .getState()
+        .pnlHistory.filter((p) => p.ts >= cutoff);
+      if (window.length >= 2) {
+        const peak = window.reduce((m, p) => (p.equity > m ? p.equity : m), -Infinity);
+        const drop = peak - equity;
+        if (drop >= st.risk.maxLossPerMinuteDollars) {
+          st.log(
+            "error",
+            `circuit breaker: $${drop.toFixed(2)} drop in last 60s (limit $${st.risk.maxLossPerMinuteDollars})`,
+          );
+          await killAll(st.risk.autoFlattenOnStop);
+        }
+      }
+    }
+
     // 15-minute cycle stops. Cycles align to wall-clock quarter hours
     // (:00, :15, :30, :45) — same cadence as Kalshi's BTC 15-min markets.
     const QUARTER_MS = 15 * 60 * 1000;
