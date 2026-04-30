@@ -5,6 +5,7 @@ import { BotStatusBanner } from "@/components/mm/BotStatusBanner";
 import { MarketsPanel } from "@/components/mm/MarketsPanel";
 import { StrategyPanel } from "@/components/mm/StrategyPanel";
 import { RiskPanel } from "@/components/mm/RiskPanel";
+import { CircuitBreakerPanel } from "@/components/mm/CircuitBreakerPanel";
 import { ActivityLog } from "@/components/mm/ActivityLog";
 import { PnlChart } from "@/components/mm/PnlChart";
 import { SettingsPanel } from "@/components/mm/SettingsPanel";
@@ -12,10 +13,13 @@ import { CollateralPanel } from "@/components/mm/CollateralPanel";
 import { OrderLedgerPanel } from "@/components/mm/OrderLedgerPanel";
 import { UnlockGate } from "@/components/mm/UnlockGate";
 import { useIdleLock } from "@/lib/security/useIdleLock";
+import { useSettingsSync } from "@/lib/security/useSettingsSync";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useBotStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
-import { KeyRound, History, ScrollText } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { KeyRound, History, ScrollText, RefreshCw } from "lucide-react";
 import { Link } from "react-router-dom";
 import { subscribeSpot } from "@/lib/kalshi/spotPoll";
 
@@ -23,16 +27,21 @@ const Index = () => {
   const [tab, setTab] = useState("dashboard");
   const credentials = useBotStore((s) => s.credentials);
   const encryptedCredentials = useBotStore((s) => s.encryptedCredentials);
+  const autoRefresh = useBotStore((s) => s.autoRefreshEnabled);
+  const setAutoRefresh = useBotStore((s) => s.setAutoRefreshEnabled);
   useIdleLock();
+  useSettingsSync();
   const hasAnyCreds = !!credentials || !!encryptedCredentials;
 
   // Prefetch BTC spot via the centralized rate-limit-aware poller so the
   // pre-start simulation has a price ready even before the bot is running.
+  // Gated on the auto-refresh toggle so users can pause background polling.
   useEffect(() => {
+    if (!autoRefresh) return;
     return subscribeSpot((price) => {
       if (price != null) useBotStore.getState().setBtcSpot(price);
     });
-  }, []);
+  }, [autoRefresh]);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
