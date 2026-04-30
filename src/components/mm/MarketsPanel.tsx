@@ -93,11 +93,13 @@ export function MarketsPanel() {
                   <td className="px-3 py-2">
                     <div className="font-mono text-xs">{m.ticker}</div>
                     <div className="text-xs text-muted-foreground">
-                      {m.floor_strike != null
-                        ? `≥ $${m.floor_strike.toLocaleString()}`
-                        : m.cap_strike != null
-                          ? `≤ $${m.cap_strike.toLocaleString()}`
-                          : "—"}
+                      {m.floor_strike != null && m.cap_strike != null
+                        ? `$${m.floor_strike.toLocaleString()}–$${m.cap_strike.toLocaleString()}`
+                        : m.floor_strike != null
+                          ? `≥ $${m.floor_strike.toLocaleString()}`
+                          : m.cap_strike != null
+                            ? `≤ $${m.cap_strike.toLocaleString()}`
+                            : "—"}
                     </div>
                   </td>
                   <td className="px-3 py-2 text-right font-mono text-xs">
