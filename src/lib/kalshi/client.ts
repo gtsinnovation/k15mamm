@@ -34,28 +34,25 @@ function backoffMs(attempt: number, baseMs = 400): number {
 }
 
 /**
- * "Price and Above" hourly BTC market detector. We accept a market if:
+ * Kalshi BTC 15-minute market detector. We accept a market if:
  *  - it's BTC (ticker or event_ticker contains BTC), and
- *  - it has a floor_strike but NO cap_strike (single-strike "above"),
- *    OR strike_type is one of the known "above" markers, and
- *  - it closes within the next ~6 hours (hourly cadence).
+ *  - it has at least one strike (floor and/or cap) — both single-strike
+ *    "above" and dual-strike range contracts are supported, since the
+ *    BTC 15-minute series is published as range buckets, and
+ *  - it closes within the next ~30 minutes (15-min cadence, plus a small
+ *    overlap so the next bucket is visible just before rollover).
  */
-function isBtcAboveHourly(m: import("./types").KalshiMarket): boolean {
+function isBtc15MinMarket(m: import("./types").KalshiMarket): boolean {
   const isBtc =
     m.ticker.toUpperCase().includes("BTC") ||
     (m.event_ticker ?? "").toUpperCase().includes("BTC");
   if (!isBtc) return false;
-  const st = (m.strike_type ?? "").toLowerCase();
-  const isAbove =
-    (m.floor_strike != null && m.cap_strike == null) ||
-    st === "greater" ||
-    st === "above" ||
-    st === "greater_or_equal";
-  if (!isAbove) return false;
+  const hasStrike = m.floor_strike != null || m.cap_strike != null;
+  if (!hasStrike) return false;
   const closeMs = m.close_time ? new Date(m.close_time).getTime() : 0;
   if (closeMs === 0) return true; // keep if no close info — better than dropping
-  const sixHours = 6 * 60 * 60 * 1000;
-  return closeMs - Date.now() <= sixHours;
+  const halfHour = 30 * 60 * 1000;
+  return closeMs - Date.now() <= halfHour;
 }
 
 export class KalshiClient {
