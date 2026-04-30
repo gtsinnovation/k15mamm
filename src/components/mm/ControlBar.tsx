@@ -130,7 +130,7 @@ export function ControlBar() {
       const client = new KalshiClient(s.credentials);
       jobs.push(
         client
-          .getBtcHourlyMarkets()
+          .getBtc15MinMarkets()
           .then((m) => {
             useBotStore.getState().setMarkets(m);
             updateStep("markets", {
