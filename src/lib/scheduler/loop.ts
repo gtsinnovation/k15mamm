@@ -464,6 +464,13 @@ async function tick() {
       const dayPnl = equity - st.sessionStartEquity;
       if (dayPnl <= -st.risk.dailyStopLossDollars) {
         st.log("error", `daily stop-loss hit (${dayPnl.toFixed(2)})`);
+        st.setCircuitBreakerTrip({
+          type: "daily-stop-loss",
+          reason: `Daily stop-loss hit: $${dayPnl.toFixed(2)} (limit -$${st.risk.dailyStopLossDollars})`,
+          equityAtTrip: equity,
+          limitDollars: st.risk.dailyStopLossDollars,
+          ts: Date.now(),
+        });
         await killAll(true);
       }
     }
@@ -471,21 +478,30 @@ async function tick() {
     // Circuit breaker: max loss within a rolling 60-second window. Uses the
     // pnlHistory we just pushed to find the highest equity in the last 60s
     // and trips if the current draw from that peak exceeds the limit.
-    if (st.risk.maxLossPerMinuteDollars > 0) {
+    {
       const cutoff = Date.now() - 60_000;
       const window = useBotStore
         .getState()
         .pnlHistory.filter((p) => p.ts >= cutoff);
       if (window.length >= 2) {
         const peak = window.reduce((m, p) => (p.equity > m ? p.equity : m), -Infinity);
-        const drop = peak - equity;
-        if (drop >= st.risk.maxLossPerMinuteDollars) {
-          st.log(
-            "error",
-            `circuit breaker: $${drop.toFixed(2)} drop in last 60s (limit $${st.risk.maxLossPerMinuteDollars})`,
-          );
+        const drop = Math.max(0, peak - equity);
+        st.setLastMinuteDropDollars(drop);
+        if (st.risk.maxLossPerMinuteDollars > 0 && drop >= st.risk.maxLossPerMinuteDollars) {
+          const reason = `Max-loss/min circuit breaker: $${drop.toFixed(2)} drop in last 60s (limit $${st.risk.maxLossPerMinuteDollars})`;
+          st.log("error", `circuit breaker: ${reason}`);
+          st.setCircuitBreakerTrip({
+            type: "max-loss-per-minute",
+            reason,
+            dropDollars: drop,
+            limitDollars: st.risk.maxLossPerMinuteDollars,
+            equityAtTrip: equity,
+            ts: Date.now(),
+          });
           await killAll(st.risk.autoFlattenOnStop);
         }
+      } else {
+        st.setLastMinuteDropDollars(0);
       }
     }
 
