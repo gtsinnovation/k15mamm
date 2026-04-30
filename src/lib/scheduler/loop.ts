@@ -526,7 +526,15 @@ async function tick() {
         const consec = useBotStore.getState().consecutiveLosingCycles;
         const limit = st.risk.maxConsecutiveLosingCycles;
         if (limit > 0 && consec >= limit) {
-          st.log("error", `cycle stop: ${consec} consecutive losing 15-min cycles`);
+          const reason = `${consec} consecutive losing 15-min cycles (limit ${limit})`;
+          st.log("error", `cycle stop: ${reason}`);
+          st.setCircuitBreakerTrip({
+            type: "consecutive-losing-cycles",
+            reason,
+            equityAtTrip: equity,
+            limitDollars: limit,
+            ts: Date.now(),
+          });
           await killAll(true);
         }
       }
@@ -535,10 +543,15 @@ async function tick() {
       // Mid-cycle: enforce intra-cycle drawdown.
       const intraPnl = equity - st.cycleStartEquity;
       if (intraPnl <= -st.risk.intraCycleDrawdownDollars) {
-        st.log(
-          "error",
-          `intra-cycle drawdown stop: ${intraPnl.toFixed(2)} (limit -$${st.risk.intraCycleDrawdownDollars})`,
-        );
+        const reason = `Intra-cycle drawdown $${intraPnl.toFixed(2)} (limit -$${st.risk.intraCycleDrawdownDollars})`;
+        st.log("error", `intra-cycle drawdown stop: ${reason}`);
+        st.setCircuitBreakerTrip({
+          type: "intra-cycle-drawdown",
+          reason,
+          equityAtTrip: equity,
+          limitDollars: st.risk.intraCycleDrawdownDollars,
+          ts: Date.now(),
+        });
         await killAll(true);
       }
     }
