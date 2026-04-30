@@ -61,7 +61,7 @@ export function MarketsPanel() {
     <div className="rounded-lg border border-border bg-card">
       <div className="flex items-start justify-between gap-2 border-b border-border p-4">
         <div>
-          <h2 className="text-lg font-semibold">BTC hourly · Price and Above</h2>
+          <h2 className="text-lg font-semibold">BTC 15-minute markets</h2>
           <p className="text-xs text-muted-foreground">{markets.length} open · {trackedTickers.length} tracked</p>
         </div>
         <Button size="sm" variant="outline" onClick={refresh} disabled={loading}>
