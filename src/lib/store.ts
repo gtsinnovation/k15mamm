@@ -45,6 +45,23 @@ export interface RiskLimits {
    * the Start button in the pre-start simulation is disabled.
    */
   collateralSafetyPct: number;
+  /**
+   * Hard cap on the total number of resting orders across all tracked
+   * tickers. The scheduler will skip placing new orders for a ticker
+   * once this many orders are already on the book. 0 disables the cap.
+   */
+  maxOpenOrders: number;
+  /**
+   * 15-minute cycle safety stop: if this many consecutive *settled* 15-min
+   * cycles realize a net loss, the bot auto-pauses. 0 disables.
+   */
+  maxConsecutiveLosingCycles: number;
+  /**
+   * 15-minute cycle safety stop: if equity drops more than this many dollars
+   * from the cycle's starting equity *within* a single 15-min cycle, the bot
+   * auto-pauses. 0 disables.
+   */
+  intraCycleDrawdownDollars: number;
 }
 
 export interface MarketQuote {
@@ -182,6 +199,18 @@ interface BotState {
   /** Idle auto-lock timeout in minutes. 0 disables. */
   idleLockMinutes: number;
   setIdleLockMinutes: (n: number) => void;
+
+  /**
+   * 15-minute cycle tracker. We snapshot equity at the start of each
+   * cycle and count consecutive losing cycles to enforce the
+   * `maxConsecutiveLosingCycles` and `intraCycleDrawdownDollars` stops.
+   */
+  cycleStartEquity: number;
+  cycleStartTs: number;
+  consecutiveLosingCycles: number;
+  setCycleSnapshot: (equity: number, ts: number) => void;
+  recordCycleResult: (loss: boolean) => void;
+  resetCycleStats: () => void;
 }
 
 const DEFAULT_STRATEGY: StrategyParams = {
@@ -201,6 +230,9 @@ const DEFAULT_RISK: RiskLimits = {
   dailyStopLossDollars: 100,
   autoFlattenOnStop: false,
   collateralSafetyPct: 95,
+  maxOpenOrders: 20,
+  maxConsecutiveLosingCycles: 3,
+  intraCycleDrawdownDollars: 25,
 };
 
 export const useBotStore = create<BotState>()(
@@ -313,6 +345,18 @@ export const useBotStore = create<BotState>()(
 
       idleLockMinutes: 15,
       setIdleLockMinutes: (n) => set({ idleLockMinutes: n }),
+
+      cycleStartEquity: 0,
+      cycleStartTs: 0,
+      consecutiveLosingCycles: 0,
+      setCycleSnapshot: (equity, ts) =>
+        set({ cycleStartEquity: equity, cycleStartTs: ts }),
+      recordCycleResult: (loss) =>
+        set((s) => ({
+          consecutiveLosingCycles: loss ? s.consecutiveLosingCycles + 1 : 0,
+        })),
+      resetCycleStats: () =>
+        set({ cycleStartEquity: 0, cycleStartTs: 0, consecutiveLosingCycles: 0 }),
     }),
     {
       name: "kalshi-mm-store",
