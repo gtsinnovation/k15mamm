@@ -41,7 +41,7 @@ const Index = () => {
           <div>
             <h1 className="text-xl font-bold tracking-tight">K15M AMM</h1>
             <p className="text-xs text-muted-foreground">
-              Avellaneda–Stoikov · Hourly Kalshi BTC range markets · Local browser bot
+              Avellaneda–Stoikov · Kalshi BTC 15-minute contracts · Local browser bot
             </p>
           </div>
           <Button
