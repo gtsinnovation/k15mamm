@@ -55,25 +55,34 @@ function GatedHome() {
   return <Landing onAuthorized={() => setAuthorized(true)} />;
 }
 
-function GatedCredentials() {
-  const [authorized, setAuthorized] = useAuthorized();
-  if (authorized) {
-    return (
-      <ErrorBoundary>
-        <Suspense
-          fallback={
-            <div className="flex min-h-screen items-center justify-center bg-background text-sm text-muted-foreground">
-              Loading credentials…
-            </div>
-          }
-        >
-          <Credentials />
-        </Suspense>
-      </ErrorBoundary>
-    );
-  }
-  return <Landing onAuthorized={() => setAuthorized(true)} />;
+function gatedPage(
+  Component: React.ComponentType,
+  fallbackLabel: string,
+): () => JSX.Element {
+  return function Gated() {
+    const [authorized, setAuthorized] = useAuthorized();
+    if (authorized) {
+      return (
+        <ErrorBoundary>
+          <Suspense
+            fallback={
+              <div className="flex min-h-screen items-center justify-center bg-background text-sm text-muted-foreground">
+                {fallbackLabel}
+              </div>
+            }
+          >
+            <Component />
+          </Suspense>
+        </ErrorBoundary>
+      );
+    }
+    return <Landing onAuthorized={() => setAuthorized(true)} />;
+  };
 }
+
+const GatedCredentials = gatedPage(Credentials, "Loading credentials…");
+const GatedAudit = gatedPage(Audit, "Loading audit log…");
+const GatedBacktest = gatedPage(Backtest, "Loading backtester…");
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -84,6 +93,8 @@ const App = () => (
         <Routes>
           <Route path="/" element={<GatedHome />} />
           <Route path="/credentials" element={<GatedCredentials />} />
+          <Route path="/audit" element={<GatedAudit />} />
+          <Route path="/backtest" element={<GatedBacktest />} />
           <Route
             path="/privacy"
             element={
