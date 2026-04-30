@@ -64,6 +64,8 @@ export function SettingsPanel() {
   const [pemChecking, setPemChecking] = useState(false);
   const [passphrase, setPassphrase] = useState("");
   const [passphrase2, setPassphrase2] = useState("");
+  const [showPass1, setShowPass1] = useState(false);
+  const [showPass2, setShowPass2] = useState(false);
   const [saving, setSaving] = useState(false);
 
   // Pre-fill keyId from vault even when locked, so the user knows what's stored.
