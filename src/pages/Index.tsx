@@ -6,6 +6,7 @@ import { MarketsPanel } from "@/components/mm/MarketsPanel";
 import { StrategyPanel } from "@/components/mm/StrategyPanel";
 import { RiskPanel } from "@/components/mm/RiskPanel";
 import { CircuitBreakerPanel } from "@/components/mm/CircuitBreakerPanel";
+import { WatchdogBanner } from "@/components/mm/WatchdogBanner";
 import { ActivityLog } from "@/components/mm/ActivityLog";
 import { PnlChart } from "@/components/mm/PnlChart";
 import { SettingsPanel } from "@/components/mm/SettingsPanel";
@@ -150,6 +151,7 @@ const Index = () => {
             <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
           <TabsContent value="dashboard" className="space-y-6">
+            <WatchdogBanner />
             <BotStatusBanner />
             <StatusHeader />
             <ControlBar />

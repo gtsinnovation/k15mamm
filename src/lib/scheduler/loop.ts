@@ -555,10 +555,44 @@ async function tick() {
         await killAll(true);
       }
     }
+    // Tick completed without throwing — clear watchdog error streak.
+    s.recordTickSuccess();
   } catch (e) {
-    s.log("error", `tick: ${(e as Error).message}`);
+    const msg = errorMessage(e);
+    s.log("error", `tick: ${msg}`);
+    s.recordTickError(msg);
+    handleWatchdog();
   } finally {
     ticking = false;
+  }
+}
+
+/**
+ * Watchdog policy:
+ *  - 1–2 consecutive tick errors → no action (transient: network blip, 429,
+ *    Kalshi 5xx). The next tick will retry naturally.
+ *  - 3rd consecutive error → restart the interval timer (defensive: covers
+ *    cases where setInterval drift / a hung promise has made ticks stop
+ *    firing) and log a warning.
+ *  - 5th consecutive error → give up auto-restart, pause the bot, and raise
+ *    a user-visible alert. Real-money safety: never keep retrying blindly.
+ */
+function handleWatchdog() {
+  const s = useBotStore.getState();
+  const errs = s.watchdog.consecutiveErrors;
+  if (s.runState !== "running") return;
+  if (errs === 3) {
+    s.log("warn", `watchdog: restarting tick timer after ${errs} consecutive errors`);
+    s.recordWatchdogRestart();
+    if (timer != null) {
+      window.clearInterval(timer);
+    }
+    timer = window.setInterval(tick, s.strategy.tickIntervalMs);
+  } else if (errs >= 5) {
+    const reason = `Bot paused: ${errs} consecutive tick errors. Last error: ${s.watchdog.lastError ?? "unknown"}`;
+    s.log("error", `watchdog: ${reason}`);
+    s.raiseWatchdogAlert(reason);
+    pause();
   }
 }
 
