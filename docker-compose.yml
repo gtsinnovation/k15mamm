@@ -1,0 +1,27 @@
+# Build + run on the Hetzner box. See DEPLOY.md for first-time setup.
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
+        VITE_SUPABASE_PUBLISHABLE_KEY: ${VITE_SUPABASE_PUBLISHABLE_KEY}
+        VITE_SUPABASE_PROJECT_ID: ${VITE_SUPABASE_PROJECT_ID}
+    image: k15m-amm:latest
+    container_name: k15m-amm
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"   # HTTP/3
+    environment:
+      DOMAIN: ${DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL}
+    volumes:
+      - caddy_data:/data       # persists Let's Encrypt certs
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:

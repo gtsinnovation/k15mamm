@@ -1,0 +1,10 @@
+node_modules
+dist
+.git
+.lovable
+.env
+.env.*
+!.env.example
+supabase
+*.log
+.DS_Store

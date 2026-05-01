@@ -1,0 +1,55 @@
+# Caddyfile — auto-HTTPS via Let's Encrypt.
+# Replace ${DOMAIN} and ${ACME_EMAIL} via environment (see docker-compose.yml).
+
+{
+	email {$ACME_EMAIL}
+	# Uncomment for staging certs while testing to avoid rate limits:
+	# acme_ca https://acme-staging-v02.api.letsencrypt.org/directory
+	servers {
+		protocols h1 h2 h3
+	}
+}
+
+{$DOMAIN} {
+	root * /srv
+	encode zstd gzip
+
+	# Pre-compressed assets from vite-plugin-compression
+	@precompressed_br {
+		path *.br
+	}
+	@precompressed_gz {
+		path *.gz
+	}
+
+	# Long-cache hashed assets
+	@hashed path /assets/*
+	header @hashed Cache-Control "public, max-age=31536000, immutable"
+
+	# Service worker must never be cached
+	@sw path /sw.js
+	header @sw Cache-Control "no-cache, no-store, must-revalidate"
+	header @sw Service-Worker-Allowed "/"
+
+	@manifest path /manifest.webmanifest
+	header @manifest Cache-Control "no-cache"
+
+	# Security headers — mirror public/_headers (Netlify/CF format)
+	header {
+		Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "geolocation=(), microphone=(), camera=(), payment=(), usb=(), magnetometer=(), accelerometer=(), gyroscope=(), interest-cohort=()"
+		Cross-Origin-Opener-Policy "same-origin"
+		Cross-Origin-Resource-Policy "same-origin"
+		Cross-Origin-Embedder-Policy "credentialless"
+		X-DNS-Prefetch-Control "on"
+		Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.gpteng.co; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.elections.kalshi.com https://demo-api.kalshi.co https://api.coinbase.com https://corsproxy.io https://api.codetabs.com https://api.allorigins.win; worker-src 'self' blob:; manifest-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'; frame-ancestors 'none'; upgrade-insecure-requests"
+		-Server
+	}
+
+	# SPA fallback — any unknown path serves index.html so React Router works
+	try_files {path} /index.html
+	file_server
+}
