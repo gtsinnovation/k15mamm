@@ -247,6 +247,23 @@ interface BotState {
   /** Whether the dashboard scheduler/polling is allowed to run. */
   autoRefreshEnabled: boolean;
   setAutoRefreshEnabled: (b: boolean) => void;
+
+  /** Watchdog telemetry: tick error tracking + auto-restart book-keeping. */
+  watchdog: {
+    consecutiveErrors: number;
+    lastErrorAt: number;
+    lastError: string | null;
+    restartCount: number;
+    /** Set when watchdog has given up auto-restarting and needs user attention. */
+    alertActive: boolean;
+    alertReason: string | null;
+    alertAt: number;
+  };
+  recordTickError: (msg: string) => void;
+  recordTickSuccess: () => void;
+  recordWatchdogRestart: () => void;
+  raiseWatchdogAlert: (reason: string) => void;
+  dismissWatchdogAlert: () => void;
 }
 
 const DEFAULT_STRATEGY: StrategyParams = {
