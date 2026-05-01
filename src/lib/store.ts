@@ -426,6 +426,48 @@ export const useBotStore = create<BotState>()(
 
       autoRefreshEnabled: true,
       setAutoRefreshEnabled: (b) => set({ autoRefreshEnabled: b }),
+
+      watchdog: {
+        consecutiveErrors: 0,
+        lastErrorAt: 0,
+        lastError: null,
+        restartCount: 0,
+        alertActive: false,
+        alertReason: null,
+        alertAt: 0,
+      },
+      recordTickError: (msg) =>
+        set((s) => ({
+          watchdog: {
+            ...s.watchdog,
+            consecutiveErrors: s.watchdog.consecutiveErrors + 1,
+            lastErrorAt: Date.now(),
+            lastError: msg,
+          },
+        })),
+      recordTickSuccess: () =>
+        set((s) =>
+          s.watchdog.consecutiveErrors === 0
+            ? {}
+            : { watchdog: { ...s.watchdog, consecutiveErrors: 0, lastError: null } },
+        ),
+      recordWatchdogRestart: () =>
+        set((s) => ({
+          watchdog: { ...s.watchdog, restartCount: s.watchdog.restartCount + 1 },
+        })),
+      raiseWatchdogAlert: (reason) =>
+        set((s) => ({
+          watchdog: {
+            ...s.watchdog,
+            alertActive: true,
+            alertReason: reason,
+            alertAt: Date.now(),
+          },
+        })),
+      dismissWatchdogAlert: () =>
+        set((s) => ({
+          watchdog: { ...s.watchdog, alertActive: false, alertReason: null, alertAt: 0 },
+        })),
     }),
     {
       name: "kalshi-mm-store",
