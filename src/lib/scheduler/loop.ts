@@ -435,10 +435,10 @@ async function tick() {
       s.log("warn", `spot: ${(e as Error).message}`);
     }
 
-    // Refresh markets every ~6 ticks (cheap with cache)
-    if (s.markets.length === 0 || Math.random() < 0.15) {
-      await refreshMarkets(client);
-    }
+    // Refresh markets every tick so the book (yes_bid/yes_ask) shown in
+    // MarketsPanel updates in realtime. Kalshi's /markets endpoint returns
+    // a fresh snapshot per call and is cheap enough at our tick rate.
+    await refreshMarkets(client);
     await syncAccount(client);
     await pollFills(client);
 
