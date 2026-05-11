@@ -4,12 +4,12 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { KalshiClient } from "@/lib/kalshi/client";
 import { toast } from "sonner";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { RefreshCw, AlertTriangle, KeyRound, ShieldAlert, Inbox, CheckCircle2 } from "lucide-react";
 import { runPreflight, type PreflightResult } from "@/lib/kalshi/preflight";
 
 export function MarketsPanel() {
-  const { markets, trackedTickers, toggleTicker, marketQuotes, positions, credentials, setMarkets, log } = useBotStore();
+  const { markets, trackedTickers, toggleTicker, marketQuotes, positions, credentials, runState, setMarkets, log } = useBotStore();
   const [loading, setLoading] = useState(false);
   const [diagnostic, setDiagnostic] = useState<
     | { kind: "idle" }
@@ -56,6 +56,35 @@ export function MarketsPanel() {
       setLoading(false);
     }
   };
+
+  // Realtime book updates: while the bot is NOT running (so the scheduler
+  // isn't already refreshing markets every tick), poll the BTC 15-min
+  // markets every 5s so yes_bid / yes_ask stay live in the table.
+  const pollingRef = useRef(false);
+  useEffect(() => {
+    if (!credentials) return;
+    if (runState === "running") return; // scheduler already refreshes each tick
+    let cancelled = false;
+    const tick = async () => {
+      if (cancelled || pollingRef.current) return;
+      pollingRef.current = true;
+      try {
+        const client = new KalshiClient(credentials);
+        const ms = await client.getBtc15MinMarkets();
+        if (!cancelled) setMarkets(ms);
+      } catch {
+        // ignore transient errors — UI keeps last snapshot
+      } finally {
+        pollingRef.current = false;
+      }
+    };
+    void tick();
+    const id = window.setInterval(tick, 5000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [credentials, runState, setMarkets]);
 
   return (
     <div className="rounded-lg border border-border bg-card">
