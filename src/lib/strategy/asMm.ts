@@ -131,12 +131,20 @@ function quoteCore(
   const half = spread / 2;
   const skew = inventorySkew(m.positionYes, globalInventory);
 
-  let bid = mid - half - skew;
-  let ask = mid + half - skew;
+  // Reservation price = inventory-adjusted "fair" price. Quoting symmetrically
+  // around `r` (not `mid`) is what lets the skew actually flatten inventory:
+  // when we're long YES, r < mid, so the ask drops toward the market and
+  // becomes fillable. Anchoring minEdge to `mid` instead of `r` (the previous
+  // behavior) defeats the skew on the ask side and causes one-sided fills.
+  const r = mid - skew;
+
+  let bid = r - half;
+  let ask = r + half;
 
   const minEdge = cfg.minEdgeCents / 100;
-  bid = Math.min(bid, mid - minEdge);
-  ask = Math.max(ask, mid + minEdge);
+  // Enforce minimum edge around the reservation price, not the raw mid.
+  bid = Math.min(bid, r - minEdge);
+  ask = Math.max(ask, r + minEdge);
 
   return {
     bid: clampPrice(bid),
