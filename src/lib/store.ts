@@ -617,6 +617,10 @@ export const useBotStore = create<BotState>()(
           },
           marketRatioOverrides: p.marketRatioOverrides ?? {},
           marketFillabilityOverrides: p.marketFillabilityOverrides ?? {},
+          marketReloadMinutes:
+            Array.isArray(p.marketReloadMinutes) && p.marketReloadMinutes.length
+              ? p.marketReloadMinutes
+              : current.marketReloadMinutes,
         };
       },
     }
