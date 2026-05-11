@@ -30,11 +30,11 @@ export function StrategyPanel() {
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <div className="space-y-1">
             <div className="font-semibold">
-              Ask/Bid ratio is blocking quotes on {stuckTickers.length} market{stuckTickers.length === 1 ? "" : "s"}
+              Quotes blocked as unfillable on {stuckTickers.length} market{stuckTickers.length === 1 ? "" : "s"}
             </div>
             <div className="opacity-90">
-              Both sides land outside the fillable range. Lower the ratio
-              globally or set a per-market override in the markets table.
+              Both sides land outside the fillable range. Lower the ask/bid ratio,
+              widen fillability thresholds, or set a per-market override.
             </div>
             <ul className="mt-1 list-disc pl-4 font-mono opacity-80">
               {stuckTickers.slice(0, 4).map(([t, v]) => (
