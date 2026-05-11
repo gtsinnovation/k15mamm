@@ -113,6 +113,7 @@ export function MarketsPanel() {
               <th className="px-3 py-2 text-right">Book</th>
               <th className="px-3 py-2 text-right">Our quote</th>
               <th className="px-3 py-2 text-right">FV</th>
+              <th className="px-3 py-2 text-right">A/B</th>
               <th className="px-3 py-2 text-right">Pos</th>
             </tr>
           </thead>
@@ -121,6 +122,8 @@ export function MarketsPanel() {
               const q = marketQuotes[m.ticker];
               const pos = positions[m.ticker]?.position ?? 0;
               const tracked = trackedTickers.includes(m.ticker);
+              const override = marketRatioOverrides[m.ticker];
+              const effRatio = override ?? strategy.askBidRatio;
               return (
                 <tr key={m.ticker} className="border-t border-border/50 hover:bg-accent/30">
                   <td className="px-3 py-2"><Checkbox checked={tracked} onCheckedChange={() => toggleTicker(m.ticker)} /></td>
