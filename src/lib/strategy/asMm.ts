@@ -196,17 +196,24 @@ function quoteCore(
   ask = clampPrice(ask);
 
   // Fillability check: if BOTH sides are pinned at the clamp extremes
-  // (bid≈0.01 and ask≈0.99), the ratio has forced quotes that cannot
-  // realistically be filled within a 15-min contract. Or, if either side
-  // sits outside the current book by an absurd margin, mark non-fillable.
+  // (bid≈0.01 and ask≈0.99), the quote can't realistically be filled.
+  // Attribute the cause correctly: ratio enforcement vs. raw spread too wide.
   let unfillableReason: string | undefined;
   const thr = { ...DEFAULT_FILLABILITY, ...(cfg.fillability ?? {}) };
   const bidPinned = bid <= thr.pinnedBidMax;
   const askPinned = ask >= thr.pinnedAskMin;
+  const rawViolatedRatio = rawBid > 0 && rawAsk < ASK_BID_RATIO * rawBid;
   if (bidPinned && askPinned) {
-    unfillableReason =
-      `ratio ${ASK_BID_RATIO}× forces bid≤${(thr.pinnedBidMax * 100).toFixed(1)}¢ ` +
-      `and ask≥${(thr.pinnedAskMin * 100).toFixed(1)}¢`;
+    if (rawViolatedRatio) {
+      unfillableReason =
+        `ratio ${ASK_BID_RATIO}× forces bid≤${(thr.pinnedBidMax * 100).toFixed(1)}¢ ` +
+        `and ask≥${(thr.pinnedAskMin * 100).toFixed(1)}¢`;
+    } else {
+      unfillableReason =
+        `spread too wide: raw bid ${(rawBid * 100).toFixed(0)}¢ / ask ` +
+        `${(rawAsk * 100).toFixed(0)}¢ clamps to ${(thr.pinnedBidMax * 100).toFixed(1)}¢/` +
+        `${(thr.pinnedAskMin * 100).toFixed(1)}¢`;
+    }
   } else if (m.bestBid != null && m.bestAsk != null) {
     const bidGap = m.bestBid - bid;
     const askGap = ask - m.bestAsk;
