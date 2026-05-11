@@ -492,6 +492,25 @@ export const useBotStore = create<BotState>()(
         set((s) => ({
           watchdog: { ...s.watchdog, alertActive: false, alertReason: null, alertAt: 0 },
         })),
+
+      unfillableQuoteRuns: {},
+      recordUnfillableQuote: (ticker, reason) =>
+        set((s) => {
+          const prev = s.unfillableQuoteRuns[ticker];
+          return {
+            unfillableQuoteRuns: {
+              ...s.unfillableQuoteRuns,
+              [ticker]: { count: (prev?.count ?? 0) + 1, reason, ts: Date.now() },
+            },
+          };
+        }),
+      recordFillableQuote: (ticker) =>
+        set((s) => {
+          if (!s.unfillableQuoteRuns[ticker]) return {} as Partial<BotState>;
+          const next = { ...s.unfillableQuoteRuns };
+          delete next[ticker];
+          return { unfillableQuoteRuns: next };
+        }),
     }),
     {
       name: "kalshi-mm-store",
