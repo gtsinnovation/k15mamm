@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { KalshiClient } from "@/lib/kalshi/client";
 import { toast } from "sonner";
 import { useEffect, useRef, useState } from "react";
-import { RefreshCw, AlertTriangle, KeyRound, ShieldAlert, Inbox, CheckCircle2 } from "lucide-react";
+import { RefreshCw, AlertTriangle, KeyRound, ShieldAlert, Inbox, CheckCircle2, SlidersHorizontal } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { runPreflight, type PreflightResult } from "@/lib/kalshi/preflight";
 
 export function MarketsPanel() {
