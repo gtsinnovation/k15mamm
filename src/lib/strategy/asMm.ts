@@ -36,6 +36,8 @@ export interface AsMmConfig {
   maxGlobalInventory: number;
   /** Max age (seconds) of book snapshot before we skip quoting. */
   maxBookAgeSec: number;
+  /** Minimum ask/bid price ratio enforced on quotes. Default 4. */
+  askBidRatio?: number;
 }
 
 export interface AsMmQuote {
@@ -151,7 +153,7 @@ function quoteCore(
   // If the natural spread doesn't satisfy this, widen by lowering the bid
   // (preferred: keeps the ask reachable) and only raise the ask if the bid
   // is already at the floor.
-  const ASK_BID_RATIO = 4;
+  const ASK_BID_RATIO = Math.max(1, cfg.askBidRatio ?? 4);
   bid = clampPrice(bid);
   ask = clampPrice(ask);
   if (bid > 0 && ask < ASK_BID_RATIO * bid) {
