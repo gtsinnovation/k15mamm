@@ -192,6 +192,7 @@ async function quoteMarket(
     maxBookAgeSec:
       s.strategy.maxBookAgeSec ??
       Math.max(5, (s.strategy.tickIntervalMs ?? 5000) / 1000),
+    askBidRatio: s.strategy.askBidRatio,
   });
 
   // If neither side is quotable (no book, no position to reduce), skip.
