@@ -19,10 +19,31 @@ function Row({ label, value, min, max, step, onChange, format }: {
 }
 
 export function StrategyPanel() {
-  const { strategy, setStrategy } = useBotStore();
+  const { strategy, setStrategy, unfillableQuoteRuns } = useBotStore();
+  // Surface tickers that have been ratio-unfillable for 3+ consecutive ticks.
+  const stuckTickers = Object.entries(unfillableQuoteRuns).filter(([, v]) => v.count >= 3);
   return (
     <div className="space-y-5 rounded-lg border border-border bg-card p-4">
       <h2 className="text-lg font-semibold">Strategy (Avellaneda–Stoikov)</h2>
+      {stuckTickers.length > 0 && (
+        <div className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning/10 p-3 text-xs text-warning">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          <div className="space-y-1">
+            <div className="font-semibold">
+              Ask/Bid ratio is blocking quotes on {stuckTickers.length} market{stuckTickers.length === 1 ? "" : "s"}
+            </div>
+            <div className="opacity-90">
+              Both sides land outside the fillable range. Lower the ratio
+              globally or set a per-market override in the markets table.
+            </div>
+            <ul className="mt-1 list-disc pl-4 font-mono opacity-80">
+              {stuckTickers.slice(0, 4).map(([t, v]) => (
+                <li key={t}>{t} — {v.reason} (×{v.count})</li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
       <Row label="γ (risk aversion)" value={strategy.gamma} min={0.05} max={3} step={0.05}
            onChange={(v) => setStrategy({ gamma: v })} format={(v) => v.toFixed(2)} />
       <Row label="σ (annualized vol)" value={strategy.sigmaAnnual} min={0.1} max={2} step={0.05}
