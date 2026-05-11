@@ -4,12 +4,12 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { KalshiClient } from "@/lib/kalshi/client";
 import { toast } from "sonner";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { RefreshCw, AlertTriangle, KeyRound, ShieldAlert, Inbox, CheckCircle2 } from "lucide-react";
 import { runPreflight, type PreflightResult } from "@/lib/kalshi/preflight";
 
 export function MarketsPanel() {
-  const { markets, trackedTickers, toggleTicker, marketQuotes, positions, credentials, setMarkets, log } = useBotStore();
+  const { markets, trackedTickers, toggleTicker, marketQuotes, positions, credentials, runState, setMarkets, log } = useBotStore();
   const [loading, setLoading] = useState(false);
   const [diagnostic, setDiagnostic] = useState<
     | { kind: "idle" }
