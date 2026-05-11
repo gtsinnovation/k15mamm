@@ -299,3 +299,85 @@ function EmptyDiagnostic({
     </div>
   );
 }
+
+interface FillabilityPopoverProps {
+  ticker: string;
+  global: { pinnedBidMax: number; pinnedAskMin: number; outsideBookGap: number };
+  override?: Partial<{ pinnedBidMax: number; pinnedAskMin: number; outsideBookGap: number }>;
+  onChange: (
+    patch: Partial<{ pinnedBidMax: number; pinnedAskMin: number; outsideBookGap: number }> | null,
+  ) => void;
+}
+
+function FillabilityPopover({ ticker, global, override, onChange }: FillabilityPopoverProps) {
+  const hasOverride = override && Object.keys(override).length > 0;
+  const eff = { ...global, ...(override ?? {}) };
+  const setField = (key: keyof typeof global) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = parseFloat(e.target.value);
+    if (!Number.isFinite(raw)) {
+      onChange({ [key]: undefined } as never);
+      return;
+    }
+    // Cents UI → dollars storage.
+    onChange({ [key]: raw / 100 });
+  };
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          title={hasOverride ? "Fillability override active" : "Set fillability thresholds"}
+          className={`flex h-6 w-6 items-center justify-center rounded hover:bg-accent ${
+            hasOverride ? "text-primary" : "text-muted-foreground"
+          }`}
+        >
+          <SlidersHorizontal className="h-3 w-3" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-64 space-y-3 text-xs">
+        <div className="flex items-center justify-between">
+          <div className="font-semibold">Fillability — {ticker}</div>
+          {hasOverride && (
+            <button
+              type="button"
+              className="text-muted-foreground hover:text-foreground"
+              onClick={() => onChange(null)}
+            >
+              reset
+            </button>
+          )}
+        </div>
+        <p className="text-muted-foreground">
+          Values in cents. Empty = use global.
+        </p>
+        <label className="flex items-center justify-between gap-2">
+          <span>Pinned bid ≤</span>
+          <Input
+            type="number" step={0.1} min={0.1} max={10}
+            value={(eff.pinnedBidMax * 100).toFixed(2)}
+            onChange={setField("pinnedBidMax")}
+            className={`h-7 w-20 text-right font-mono ${override?.pinnedBidMax != null ? "border-primary text-primary" : ""}`}
+          />
+        </label>
+        <label className="flex items-center justify-between gap-2">
+          <span>Pinned ask ≥</span>
+          <Input
+            type="number" step={0.1} min={90} max={99.9}
+            value={(eff.pinnedAskMin * 100).toFixed(2)}
+            onChange={setField("pinnedAskMin")}
+            className={`h-7 w-20 text-right font-mono ${override?.pinnedAskMin != null ? "border-primary text-primary" : ""}`}
+          />
+        </label>
+        <label className="flex items-center justify-between gap-2">
+          <span>Outside-book gap</span>
+          <Input
+            type="number" step={1} min={5} max={95}
+            value={(eff.outsideBookGap * 100).toFixed(0)}
+            onChange={setField("outsideBookGap")}
+            className={`h-7 w-20 text-right font-mono ${override?.outsideBookGap != null ? "border-primary text-primary" : ""}`}
+          />
+        </label>
+      </PopoverContent>
+    </Popover>
+  );
+}
