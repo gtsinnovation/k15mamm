@@ -15,6 +15,7 @@ export function MarketsPanel() {
     markets, trackedTickers, toggleTicker, marketQuotes, positions,
     credentials, runState, setMarkets, log,
     strategy, marketRatioOverrides, setMarketRatioOverride,
+    marketFillabilityOverrides, setMarketFillabilityOverride,
   } = useBotStore();
   const [loading, setLoading] = useState(false);
   const [diagnostic, setDiagnostic] = useState<
