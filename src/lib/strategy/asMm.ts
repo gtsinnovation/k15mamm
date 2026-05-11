@@ -38,7 +38,27 @@ export interface AsMmConfig {
   maxBookAgeSec: number;
   /** Minimum ask/bid price ratio enforced on quotes. Default 4. */
   askBidRatio?: number;
+  /** Fillability validation thresholds (all in dollars 0..1). */
+  fillability?: FillabilityThresholds;
 }
+
+export interface FillabilityThresholds {
+  /** Bid ≤ this price is considered "pinned" at the floor. Default 0.0101. */
+  pinnedBidMax: number;
+  /** Ask ≥ this price is considered "pinned" at the ceiling. Default 0.9899. */
+  pinnedAskMin: number;
+  /**
+   * If both bid and ask are farther outside the live book than this many
+   * dollars, the quote is marked unfillable. Default 0.5 (= 50¢).
+   */
+  outsideBookGap: number;
+}
+
+export const DEFAULT_FILLABILITY: FillabilityThresholds = {
+  pinnedBidMax: 0.0101,
+  pinnedAskMin: 0.9899,
+  outsideBookGap: 0.5,
+};
 
 export interface QuoteDebug {
   mid: number;
