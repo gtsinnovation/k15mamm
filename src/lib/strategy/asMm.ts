@@ -137,7 +137,7 @@ function quoteCore(
   m: MarketState,
   globalInventory: number,
   cfg: AsMmConfig,
-): { bid: number; ask: number; size: number } | null {
+): { bid: number; ask: number; size: number; debug: QuoteDebug } | null {
   const mid = computeMid(m, cfg);
   if (mid == null) return null;
 
@@ -147,31 +147,22 @@ function quoteCore(
   const half = spread / 2;
   const skew = inventorySkew(m.positionYes, globalInventory);
 
-  // Reservation price = inventory-adjusted "fair" price. Quoting symmetrically
-  // around `r` (not `mid`) is what lets the skew actually flatten inventory:
-  // when we're long YES, r < mid, so the ask drops toward the market and
-  // becomes fillable. Anchoring minEdge to `mid` instead of `r` (the previous
-  // behavior) defeats the skew on the ask side and causes one-sided fills.
   const r = mid - skew;
 
   let bid = r - half;
   let ask = r + half;
 
   const minEdge = cfg.minEdgeCents / 100;
-  // Enforce minimum edge around the reservation price, not the raw mid.
   bid = Math.min(bid, r - minEdge);
   ask = Math.max(ask, r + minEdge);
 
-  // Profitability constraint: ask must be at least ASK_BID_RATIO × bid so any
-  // contract we buy can be resold at a guaranteed multiple inside the cycle.
-  // If the natural spread doesn't satisfy this, widen by lowering the bid
-  // (preferred: keeps the ask reachable) and only raise the ask if the bid
-  // is already at the floor.
+  const rawBid = bid;
+  const rawAsk = ask;
+
   const ASK_BID_RATIO = Math.max(1, cfg.askBidRatio ?? 4);
   bid = clampPrice(bid);
   ask = clampPrice(ask);
   if (bid > 0 && ask < ASK_BID_RATIO * bid) {
-    // Try lowering bid first so ask = ASK_BID_RATIO * bid stays ≤ 0.99.
     const maxBidForAsk = ask / ASK_BID_RATIO;
     if (maxBidForAsk >= 0.01) {
       bid = maxBidForAsk;
@@ -181,11 +172,39 @@ function quoteCore(
     }
   }
 
-  return {
-    bid: clampPrice(bid),
-    ask: clampPrice(ask),
-    size: cfg.maxQuoteSize,
+  bid = clampPrice(bid);
+  ask = clampPrice(ask);
+
+  // Fillability check: if BOTH sides are pinned at the clamp extremes
+  // (bid≈0.01 and ask≈0.99), the ratio has forced quotes that cannot
+  // realistically be filled within a 15-min contract. Or, if either side
+  // sits outside the current book by an absurd margin, mark non-fillable.
+  let unfillableReason: string | undefined;
+  const bidPinned = bid <= 0.0101;
+  const askPinned = ask >= 0.9899;
+  if (bidPinned && askPinned) {
+    unfillableReason = `ratio ${ASK_BID_RATIO}× forces bid≤1¢ and ask≥99¢`;
+  } else if (m.bestBid != null && m.bestAsk != null) {
+    // Both sides outside the book by >50¢ means neither will be reached.
+    const bidGap = m.bestBid - bid; // how far below the book bid we are
+    const askGap = ask - m.bestAsk; // how far above the book ask we are
+    if (bidGap > 0.5 && askGap > 0.5) {
+      unfillableReason = `both sides >50¢ outside book (bid −${(bidGap*100).toFixed(0)}¢, ask +${(askGap*100).toFixed(0)}¢)`;
+    }
+  }
+
+  const debug: QuoteDebug = {
+    mid,
+    reservation: r,
+    askBidRatio: ASK_BID_RATIO,
+    rawBid,
+    rawAsk,
+    finalBid: bid,
+    finalAsk: ask,
+    unfillableReason,
   };
+
+  return { bid, ask, size: cfg.maxQuoteSize, debug };
 }
 
 function emptyQuote(ticker: string): AsMmQuote {
