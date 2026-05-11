@@ -152,7 +152,8 @@ export function MarketsPanel() {
   // Live countdown to the next wall-clock aligned reload mark.
   const [nextMark, setNextMark] = useState<{ at: Date; secs: number } | null>(null);
   useEffect(() => {
-    const RELOAD_MINUTES = [0, 16, 31, 45];
+    const RELOAD_MINUTES =
+      marketReloadMinutes && marketReloadMinutes.length ? marketReloadMinutes : [0, 16, 31, 45];
     const compute = () => {
       const now = new Date();
       let at: Date | null = null;
