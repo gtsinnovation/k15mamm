@@ -345,7 +345,38 @@ export const useBotStore = create<BotState>()(
         })),
 
       markets: [],
-      setMarkets: (m) => set({ markets: m }),
+      setMarkets: (m) =>
+        set((s) => {
+          // Diff incoming list against current to preserve object identity
+          // for unchanged markets, reducing UI churn / re-renders.
+          const prev = s.markets;
+          const prevByTicker = new Map(prev.map((x) => [x.ticker, x]));
+          let changed = prev.length !== m.length;
+          const next = m.map((incoming) => {
+            const old = prevByTicker.get(incoming.ticker);
+            if (!old) {
+              changed = true;
+              return incoming;
+            }
+            // Shallow JSON compare is fine — KalshiMarket is a flat record.
+            if (JSON.stringify(old) === JSON.stringify(incoming)) return old;
+            changed = true;
+            return incoming;
+          });
+          return changed ? { markets: next } : {};
+        }),
+
+      marketReloadMinutes: [0, 16, 31, 45],
+      setMarketReloadMinutes: (mins) => {
+        const cleaned = Array.from(
+          new Set(
+            mins
+              .map((n) => Math.floor(Number(n)))
+              .filter((n) => Number.isFinite(n) && n >= 0 && n <= 59),
+          ),
+        ).sort((a, b) => a - b);
+        set({ marketReloadMinutes: cleaned.length ? cleaned : [0, 16, 31, 45] });
+      },
 
       marketRatioOverrides: {},
       setMarketRatioOverride: (ticker, ratio) =>
