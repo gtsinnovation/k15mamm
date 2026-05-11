@@ -38,6 +38,12 @@ export interface PnlPoint {
   equity: number;
 }
 
+export interface FillabilityThresholds {
+  pinnedBidMax: number;
+  pinnedAskMin: number;
+  outsideBookGap: number;
+}
+
 export interface StrategyParams {
   gamma: number; // risk aversion
   sigmaAnnual: number; // annualized vol of BTC (e.g. 0.6 = 60%)
@@ -50,6 +56,8 @@ export interface StrategyParams {
   maxBookAgeSec: number;
   /** Minimum ask/bid price ratio. e.g. 4 means ask ≥ 4 × bid. */
   askBidRatio: number;
+  /** Global fillability validation thresholds. */
+  fillability: FillabilityThresholds;
 }
 
 export interface RiskLimits {
