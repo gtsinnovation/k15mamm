@@ -295,6 +295,7 @@ const DEFAULT_STRATEGY: StrategyParams = {
   requoteThresholdCents: 1,
   maxBookAgeSec: 5.0,
   askBidRatio: 4,
+  fillability: { pinnedBidMax: 0.0101, pinnedAskMin: 0.9899, outsideBookGap: 0.5 },
 };
 
 const DEFAULT_RISK: RiskLimits = {
