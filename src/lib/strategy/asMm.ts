@@ -40,6 +40,18 @@ export interface AsMmConfig {
   askBidRatio?: number;
 }
 
+export interface QuoteDebug {
+  mid: number;
+  reservation: number;
+  askBidRatio: number;
+  rawBid: number;
+  rawAsk: number;
+  finalBid: number;
+  finalAsk: number;
+  /** Set when the ratio-enforced quote is judged non-fillable. */
+  unfillableReason?: string;
+}
+
 export interface AsMmQuote {
   ticker: string;
   /** Dollars, rounded to 2dp; null = do not quote this side. */
@@ -47,6 +59,8 @@ export interface AsMmQuote {
   askPrice: number | null;
   bidSize: number;
   askSize: number;
+  /** Diagnostics for the scheduler/UI. Optional — empty quotes may omit. */
+  debug?: QuoteDebug;
 }
 
 const SECONDS_PER_YEAR = 365 * 24 * 3600;
