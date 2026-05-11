@@ -355,6 +355,28 @@ export const useBotStore = create<BotState>()(
           return { marketRatioOverrides: next };
         }),
 
+      marketFillabilityOverrides: {},
+      setMarketFillabilityOverride: (ticker, patch) =>
+        set((s) => {
+          const next = { ...s.marketFillabilityOverrides };
+          if (patch == null) {
+            delete next[ticker];
+          } else {
+            const merged = { ...(next[ticker] ?? {}), ...patch };
+            // Strip undefined / non-finite values so unsetting one field works.
+            for (const k of Object.keys(merged) as (keyof FillabilityThresholds)[]) {
+              const v = merged[k];
+              if (v == null || !Number.isFinite(v)) delete merged[k];
+            }
+            if (Object.keys(merged).length === 0) {
+              delete next[ticker];
+            } else {
+              next[ticker] = merged;
+            }
+          }
+          return { marketFillabilityOverrides: next };
+        }),
+
       marketQuotes: {},
       upsertMarketQuote: (q) =>
         set((s) => ({ marketQuotes: { ...s.marketQuotes, [q.ticker]: q } })),
