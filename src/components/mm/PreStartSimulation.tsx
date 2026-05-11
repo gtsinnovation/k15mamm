@@ -48,9 +48,51 @@ export function PreStartSimulation({
   const strategy = useBotStore((s) => s.strategy);
   const balance = useBotStore((s) => s.balance);
   const safetyPct = useBotStore((s) => s.risk.collateralSafetyPct);
+  const credentials = useBotStore((s) => s.credentials);
+  const setMarkets = useBotStore((s) => s.setMarkets);
+  const log = useBotStore((s) => s.log);
   const setRisk = useBotStore((s) => s.setRisk);
   const toggleTicker = useBotStore((s) => s.toggleTicker);
   const [showExpected, setShowExpected] = useState(false);
+  const [refreshingMarkets, setRefreshingMarkets] = useState(false);
+
+  const refreshMarkets = async () => {
+    if (!credentials) {
+      toast.error("Save credentials first (Settings tab)");
+      return;
+    }
+    setRefreshingMarkets(true);
+    try {
+      const pf = await runPreflight(credentials);
+      if (pf.status !== "ok") {
+        log("error", `preflight failed: ${pf.label} — ${pf.detail ?? ""}`);
+        toast.error(`${pf.label}: ${pf.detail ?? ""}`);
+        return;
+      }
+      const client = new KalshiClient(credentials);
+      const ms = await client.getBtc15MinMarkets();
+      setMarkets(ms);
+      log("info", `pre-start refresh: loaded ${ms.length} BTC 15-min markets`);
+      if (ms.length === 0) toast.warning("No BTC 15-min markets returned by Kalshi");
+      else toast.success(`Loaded ${ms.length} markets`);
+    } catch (e) {
+      const msg = (e as Error).message;
+      log("error", `pre-start refresh failed: ${msg}`);
+      toast.error(msg);
+    } finally {
+      setRefreshingMarkets(false);
+    }
+  };
+
+  // Auto-load markets when the dialog opens and none are loaded yet.
+  useEffect(() => {
+    if (!open) return;
+    if (markets.length > 0) return;
+    if (!credentials) return;
+    if (refreshingMarkets) return;
+    refreshMarkets();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   const sim = useMemo(() => {
     if (!open || spot <= 0) return null;
