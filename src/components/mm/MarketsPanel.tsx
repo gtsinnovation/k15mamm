@@ -174,7 +174,7 @@ export function MarketsPanel() {
     compute();
     const id = window.setInterval(compute, 1000);
     return () => window.clearInterval(id);
-  }, []);
+  }, [marketReloadMinutes]);
 
   const fmtClock = (d: Date) =>
     `${d.getHours()}:${d.getMinutes().toString().padStart(2, "0")}`;
