@@ -43,14 +43,19 @@ function backoffMs(attempt: number, baseMs = 400): number {
  *    overlap so the next bucket is visible just before rollover).
  */
 function isBtc15MinMarket(m: import("./types").KalshiMarket): boolean {
-  const isBtc =
-    m.ticker.toUpperCase().includes("BTC") ||
-    (m.event_ticker ?? "").toUpperCase().includes("BTC");
-  if (!isBtc) return false;
+  // Kalshi's 15-minute BTC series ticker is `KXBTC15M`. Markets in that
+  // series have tickers/event_tickers starting with `KXBTC15M-`.
+  const t = m.ticker.toUpperCase();
+  const et = (m.event_ticker ?? "").toUpperCase();
+  const inSeries = t.startsWith("KXBTC15M") || et.startsWith("KXBTC15M");
+  if (!inSeries) return false;
   const hasStrike = m.floor_strike != null || m.cap_strike != null;
   if (!hasStrike) return false;
   const closeMs = m.close_time ? new Date(m.close_time).getTime() : 0;
   if (closeMs === 0) return true; // keep if no close info — better than dropping
+  // 15-min cadence + small overlap so the next bucket is visible just
+  // before rollover. Don't drop markets that have just closed (negative
+  // delta within a few seconds) — let the scheduler decide.
   const halfHour = 30 * 60 * 1000;
   return closeMs - Date.now() <= halfHour;
 }
