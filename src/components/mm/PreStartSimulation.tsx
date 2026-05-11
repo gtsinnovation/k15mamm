@@ -166,6 +166,9 @@ export function PreStartSimulation({
             allMarkets={markets}
             spot={spot}
             onEnable={(t) => toggleTicker(t)}
+            onRefresh={refreshMarkets}
+            refreshing={refreshingMarkets}
+            hasCredentials={!!credentials}
           />
         ) : (
           <>
