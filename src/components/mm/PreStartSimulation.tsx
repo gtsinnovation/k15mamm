@@ -16,6 +16,9 @@ import { useBotStore } from "@/lib/store";
 import { simulateStartCollateral } from "@/lib/strategy/collateral";
 import { AlertTriangle, ListChecks, Play, RefreshCw, ShieldAlert, Target } from "lucide-react";
 import { subscribeSpot, type SpotPollStatus } from "@/lib/kalshi/spotPoll";
+import { KalshiClient } from "@/lib/kalshi/client";
+import { runPreflight } from "@/lib/kalshi/preflight";
+import { toast } from "sonner";
 
 function fmtUsd(cents: number) {
   return `$${(cents / 100).toFixed(2)}`;
