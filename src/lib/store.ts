@@ -38,6 +38,12 @@ export interface PnlPoint {
   equity: number;
 }
 
+export interface FillabilityThresholds {
+  pinnedBidMax: number;
+  pinnedAskMin: number;
+  outsideBookGap: number;
+}
+
 export interface StrategyParams {
   gamma: number; // risk aversion
   sigmaAnnual: number; // annualized vol of BTC (e.g. 0.6 = 60%)
@@ -50,6 +56,8 @@ export interface StrategyParams {
   maxBookAgeSec: number;
   /** Minimum ask/bid price ratio. e.g. 4 means ask ≥ 4 × bid. */
   askBidRatio: number;
+  /** Global fillability validation thresholds. */
+  fillability: FillabilityThresholds;
 }
 
 export interface RiskLimits {
@@ -166,6 +174,13 @@ interface BotState {
   /** Per-ticker overrides for the global StrategyParams.askBidRatio. */
   marketRatioOverrides: Record<string, number>;
   setMarketRatioOverride: (ticker: string, ratio: number | null) => void;
+
+  /** Per-ticker overrides for fillability thresholds (partial allowed). */
+  marketFillabilityOverrides: Record<string, Partial<FillabilityThresholds>>;
+  setMarketFillabilityOverride: (
+    ticker: string,
+    patch: Partial<FillabilityThresholds> | null,
+  ) => void;
 
   markets: KalshiMarket[];
   setMarkets: (m: KalshiMarket[]) => void;
@@ -287,6 +302,7 @@ const DEFAULT_STRATEGY: StrategyParams = {
   requoteThresholdCents: 1,
   maxBookAgeSec: 5.0,
   askBidRatio: 4,
+  fillability: { pinnedBidMax: 0.0101, pinnedAskMin: 0.9899, outsideBookGap: 0.5 },
 };
 
 const DEFAULT_RISK: RiskLimits = {
@@ -337,6 +353,28 @@ export const useBotStore = create<BotState>()(
             next[ticker] = Math.max(1, ratio);
           }
           return { marketRatioOverrides: next };
+        }),
+
+      marketFillabilityOverrides: {},
+      setMarketFillabilityOverride: (ticker, patch) =>
+        set((s) => {
+          const next = { ...s.marketFillabilityOverrides };
+          if (patch == null) {
+            delete next[ticker];
+          } else {
+            const merged = { ...(next[ticker] ?? {}), ...patch };
+            // Strip undefined / non-finite values so unsetting one field works.
+            for (const k of Object.keys(merged) as (keyof FillabilityThresholds)[]) {
+              const v = merged[k];
+              if (v == null || !Number.isFinite(v)) delete merged[k];
+            }
+            if (Object.keys(merged).length === 0) {
+              delete next[ticker];
+            } else {
+              next[ticker] = merged;
+            }
+          }
+          return { marketFillabilityOverrides: next };
         }),
 
       marketQuotes: {},
@@ -519,6 +557,7 @@ export const useBotStore = create<BotState>()(
         risk: s.risk,
         trackedTickers: s.trackedTickers,
         marketRatioOverrides: s.marketRatioOverrides,
+        marketFillabilityOverrides: s.marketFillabilityOverrides,
         encryptedCredentials: s.encryptedCredentials,
         idleLockMinutes: s.idleLockMinutes,
         autoRefreshEnabled: s.autoRefreshEnabled,

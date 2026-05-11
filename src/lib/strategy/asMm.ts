@@ -38,7 +38,27 @@ export interface AsMmConfig {
   maxBookAgeSec: number;
   /** Minimum ask/bid price ratio enforced on quotes. Default 4. */
   askBidRatio?: number;
+  /** Fillability validation thresholds (all in dollars 0..1). */
+  fillability?: FillabilityThresholds;
 }
+
+export interface FillabilityThresholds {
+  /** Bid ≤ this price is considered "pinned" at the floor. Default 0.0101. */
+  pinnedBidMax: number;
+  /** Ask ≥ this price is considered "pinned" at the ceiling. Default 0.9899. */
+  pinnedAskMin: number;
+  /**
+   * If both bid and ask are farther outside the live book than this many
+   * dollars, the quote is marked unfillable. Default 0.5 (= 50¢).
+   */
+  outsideBookGap: number;
+}
+
+export const DEFAULT_FILLABILITY: FillabilityThresholds = {
+  pinnedBidMax: 0.0101,
+  pinnedAskMin: 0.9899,
+  outsideBookGap: 0.5,
+};
 
 export interface QuoteDebug {
   mid: number;
@@ -180,16 +200,20 @@ function quoteCore(
   // realistically be filled within a 15-min contract. Or, if either side
   // sits outside the current book by an absurd margin, mark non-fillable.
   let unfillableReason: string | undefined;
-  const bidPinned = bid <= 0.0101;
-  const askPinned = ask >= 0.9899;
+  const thr = { ...DEFAULT_FILLABILITY, ...(cfg.fillability ?? {}) };
+  const bidPinned = bid <= thr.pinnedBidMax;
+  const askPinned = ask >= thr.pinnedAskMin;
   if (bidPinned && askPinned) {
-    unfillableReason = `ratio ${ASK_BID_RATIO}× forces bid≤1¢ and ask≥99¢`;
+    unfillableReason =
+      `ratio ${ASK_BID_RATIO}× forces bid≤${(thr.pinnedBidMax * 100).toFixed(1)}¢ ` +
+      `and ask≥${(thr.pinnedAskMin * 100).toFixed(1)}¢`;
   } else if (m.bestBid != null && m.bestAsk != null) {
-    // Both sides outside the book by >50¢ means neither will be reached.
-    const bidGap = m.bestBid - bid; // how far below the book bid we are
-    const askGap = ask - m.bestAsk; // how far above the book ask we are
-    if (bidGap > 0.5 && askGap > 0.5) {
-      unfillableReason = `both sides >50¢ outside book (bid −${(bidGap*100).toFixed(0)}¢, ask +${(askGap*100).toFixed(0)}¢)`;
+    const bidGap = m.bestBid - bid;
+    const askGap = ask - m.bestAsk;
+    if (bidGap > thr.outsideBookGap && askGap > thr.outsideBookGap) {
+      unfillableReason =
+        `both sides >${(thr.outsideBookGap * 100).toFixed(0)}¢ outside book ` +
+        `(bid −${(bidGap * 100).toFixed(0)}¢, ask +${(askGap * 100).toFixed(0)}¢)`;
     }
   }
 

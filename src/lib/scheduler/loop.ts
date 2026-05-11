@@ -194,6 +194,10 @@ async function quoteMarket(
       Math.max(5, (s.strategy.tickIntervalMs ?? 5000) / 1000),
     askBidRatio:
       s.marketRatioOverrides?.[market.ticker] ?? s.strategy.askBidRatio,
+    fillability: {
+      ...s.strategy.fillability,
+      ...(s.marketFillabilityOverrides?.[market.ticker] ?? {}),
+    },
   });
 
   // Debug log every generated quote: mid, reservation, askBidRatio, raw vs final.
