@@ -2,6 +2,7 @@ import { useBotStore } from "@/lib/store";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { KalshiClient } from "@/lib/kalshi/client";
 import { toast } from "sonner";
 import { useEffect, useRef, useState } from "react";
@@ -9,7 +10,11 @@ import { RefreshCw, AlertTriangle, KeyRound, ShieldAlert, Inbox, CheckCircle2 } 
 import { runPreflight, type PreflightResult } from "@/lib/kalshi/preflight";
 
 export function MarketsPanel() {
-  const { markets, trackedTickers, toggleTicker, marketQuotes, positions, credentials, runState, setMarkets, log } = useBotStore();
+  const {
+    markets, trackedTickers, toggleTicker, marketQuotes, positions,
+    credentials, runState, setMarkets, log,
+    strategy, marketRatioOverrides, setMarketRatioOverride,
+  } = useBotStore();
   const [loading, setLoading] = useState(false);
   const [diagnostic, setDiagnostic] = useState<
     | { kind: "idle" }
