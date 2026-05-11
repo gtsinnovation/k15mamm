@@ -598,6 +598,7 @@ export const useBotStore = create<BotState>()(
         idleLockMinutes: s.idleLockMinutes,
         autoRefreshEnabled: s.autoRefreshEnabled,
         circuitBreakerTrip: s.circuitBreakerTrip,
+        marketReloadMinutes: s.marketReloadMinutes,
       }),
       // Backfill new fields onto stores persisted before they existed so
       // old localStorage blobs don't crash the UI on reload.
