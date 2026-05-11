@@ -552,6 +552,7 @@ export const useBotStore = create<BotState>()(
     }),
     {
       name: "kalshi-mm-store",
+      version: 2,
       partialize: (s) => ({
         strategy: s.strategy,
         risk: s.risk,
@@ -563,6 +564,25 @@ export const useBotStore = create<BotState>()(
         autoRefreshEnabled: s.autoRefreshEnabled,
         circuitBreakerTrip: s.circuitBreakerTrip,
       }),
+      // Backfill new fields onto stores persisted before they existed so
+      // old localStorage blobs don't crash the UI on reload.
+      merge: (persisted, current) => {
+        const p = (persisted ?? {}) as Partial<BotState>;
+        return {
+          ...current,
+          ...p,
+          strategy: {
+            ...current.strategy,
+            ...(p.strategy ?? {}),
+            fillability: {
+              ...current.strategy.fillability,
+              ...((p.strategy as Partial<StrategyParams> | undefined)?.fillability ?? {}),
+            },
+          },
+          marketRatioOverrides: p.marketRatioOverrides ?? {},
+          marketFillabilityOverrides: p.marketFillabilityOverrides ?? {},
+        };
+      },
     }
   )
 );
