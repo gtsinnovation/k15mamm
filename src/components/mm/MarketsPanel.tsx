@@ -147,6 +147,40 @@ export function MarketsPanel() {
     };
   }, [credentials, setMarkets, log]);
 
+  // Live countdown to the next wall-clock aligned reload mark.
+  const [nextMark, setNextMark] = useState<{ at: Date; secs: number } | null>(null);
+  useEffect(() => {
+    const RELOAD_MINUTES = [0, 16, 31, 45];
+    const compute = () => {
+      const now = new Date();
+      let at: Date | null = null;
+      for (const min of RELOAD_MINUTES) {
+        if (min > now.getMinutes() || (min === now.getMinutes() && now.getSeconds() === 0)) {
+          at = new Date(now);
+          at.setMinutes(min, 0, 0);
+          break;
+        }
+      }
+      if (!at) {
+        at = new Date(now);
+        at.setHours(now.getHours() + 1, RELOAD_MINUTES[0], 0, 0);
+      }
+      const secs = Math.max(0, Math.round((at.getTime() - now.getTime()) / 1000));
+      setNextMark({ at, secs });
+    };
+    compute();
+    const id = window.setInterval(compute, 1000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  const fmtClock = (d: Date) =>
+    `${d.getHours()}:${d.getMinutes().toString().padStart(2, "0")}`;
+  const fmtCountdown = (s: number) => {
+    const m = Math.floor(s / 60);
+    const r = s % 60;
+    return m > 0 ? `${m}m ${r.toString().padStart(2, "0")}s` : `${r}s`;
+  };
+
   return (
     <div className="rounded-lg border border-border bg-card">
       <div className="flex items-start justify-between gap-2 border-b border-border p-4">
@@ -154,10 +188,22 @@ export function MarketsPanel() {
           <h2 className="text-lg font-semibold">BTC 15-minute markets</h2>
           <p className="text-xs text-muted-foreground">{markets.length} open · {trackedTickers.length} tracked</p>
         </div>
-        <Button size="sm" variant="outline" onClick={refresh} disabled={loading}>
-          <RefreshCw className={`mr-1 h-3 w-3 ${loading ? "animate-spin" : ""}`} />
-          {loading ? "Loading…" : "Refresh"}
-        </Button>
+        <div className="flex items-center gap-2">
+          {nextMark && (
+            <div className="flex flex-col items-end leading-tight rounded-md border border-border bg-background/40 px-2.5 py-1">
+              <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                Next reload
+              </span>
+              <span className="font-mono text-xs">
+                {fmtClock(nextMark.at)} <span className="text-muted-foreground">· in {fmtCountdown(nextMark.secs)}</span>
+              </span>
+            </div>
+          )}
+          <Button size="sm" variant="outline" onClick={refresh} disabled={loading}>
+            <RefreshCw className={`mr-1 h-3 w-3 ${loading ? "animate-spin" : ""}`} />
+            {loading ? "Loading…" : "Refresh"}
+          </Button>
+        </div>
       </div>
       <ScrollArea className="h-[420px]">
         <div className="overflow-x-auto">
