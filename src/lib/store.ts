@@ -270,6 +270,11 @@ interface BotState {
   recordWatchdogRestart: () => void;
   raiseWatchdogAlert: (reason: string) => void;
   dismissWatchdogAlert: () => void;
+
+  /** Per-ticker count of consecutive ratio-unfillable quotes (resets on a fillable one). */
+  unfillableQuoteRuns: Record<string, { count: number; reason: string; ts: number }>;
+  recordUnfillableQuote: (ticker: string, reason: string) => void;
+  recordFillableQuote: (ticker: string) => void;
 }
 
 const DEFAULT_STRATEGY: StrategyParams = {
@@ -487,6 +492,25 @@ export const useBotStore = create<BotState>()(
         set((s) => ({
           watchdog: { ...s.watchdog, alertActive: false, alertReason: null, alertAt: 0 },
         })),
+
+      unfillableQuoteRuns: {},
+      recordUnfillableQuote: (ticker, reason) =>
+        set((s) => {
+          const prev = s.unfillableQuoteRuns[ticker];
+          return {
+            unfillableQuoteRuns: {
+              ...s.unfillableQuoteRuns,
+              [ticker]: { count: (prev?.count ?? 0) + 1, reason, ts: Date.now() },
+            },
+          };
+        }),
+      recordFillableQuote: (ticker) =>
+        set((s) => {
+          if (!s.unfillableQuoteRuns[ticker]) return {} as Partial<BotState>;
+          const next = { ...s.unfillableQuoteRuns };
+          delete next[ticker];
+          return { unfillableQuoteRuns: next };
+        }),
     }),
     {
       name: "kalshi-mm-store",
@@ -494,6 +518,7 @@ export const useBotStore = create<BotState>()(
         strategy: s.strategy,
         risk: s.risk,
         trackedTickers: s.trackedTickers,
+        marketRatioOverrides: s.marketRatioOverrides,
         encryptedCredentials: s.encryptedCredentials,
         idleLockMinutes: s.idleLockMinutes,
         autoRefreshEnabled: s.autoRefreshEnabled,
