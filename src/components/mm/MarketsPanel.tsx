@@ -93,6 +93,60 @@ export function MarketsPanel() {
     };
   }, [credentials, runState, setMarkets]);
 
+  // Wall-clock aligned contract reload. Kalshi lists new BTC 15-min contracts
+  // on these minute marks of every hour: :00, :16, :31, :45. We refresh the
+  // markets list at exactly those moments (regardless of bot state) so newly
+  // listed tickers appear immediately and expired ones drop out.
+  useEffect(() => {
+    if (!credentials) return;
+    const RELOAD_MINUTES = [0, 16, 31, 45];
+    let cancelled = false;
+    let timeoutId: number | undefined;
+
+    const msUntilNextMark = () => {
+      const now = new Date();
+      for (const min of RELOAD_MINUTES) {
+        if (
+          min > now.getMinutes() ||
+          (min === now.getMinutes() && now.getSeconds() === 0 && now.getMilliseconds() < 50)
+        ) {
+          const t = new Date(now);
+          t.setMinutes(min, 0, 50);
+          return t.getTime() - now.getTime();
+        }
+      }
+      // wrap to next hour, first mark
+      const t = new Date(now);
+      t.setHours(now.getHours() + 1, RELOAD_MINUTES[0], 0, 50);
+      return t.getTime() - now.getTime();
+    };
+
+    const doReload = async () => {
+      if (cancelled) return;
+      try {
+        const client = new KalshiClient(credentials);
+        const ms = await client.getBtc15MinMarkets();
+        if (!cancelled) {
+          setMarkets(ms);
+          log("info", `scheduled reload: ${ms.length} BTC 15-min markets`);
+        }
+      } catch (e) {
+        if (!cancelled) log("warn", `scheduled reload failed: ${(e as Error).message}`);
+      } finally {
+        if (!cancelled) schedule();
+      }
+    };
+
+    const schedule = () => {
+      timeoutId = window.setTimeout(doReload, msUntilNextMark());
+    };
+    schedule();
+    return () => {
+      cancelled = true;
+      if (timeoutId !== undefined) window.clearTimeout(timeoutId);
+    };
+  }, [credentials, setMarkets, log]);
+
   return (
     <div className="rounded-lg border border-border bg-card">
       <div className="flex items-start justify-between gap-2 border-b border-border p-4">
