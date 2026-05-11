@@ -557,6 +557,7 @@ export const useBotStore = create<BotState>()(
         risk: s.risk,
         trackedTickers: s.trackedTickers,
         marketRatioOverrides: s.marketRatioOverrides,
+        marketFillabilityOverrides: s.marketFillabilityOverrides,
         encryptedCredentials: s.encryptedCredentials,
         idleLockMinutes: s.idleLockMinutes,
         autoRefreshEnabled: s.autoRefreshEnabled,
