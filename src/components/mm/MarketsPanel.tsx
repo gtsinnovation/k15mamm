@@ -16,6 +16,7 @@ export function MarketsPanel() {
     credentials, runState, setMarkets, log,
     strategy, marketRatioOverrides, setMarketRatioOverride,
     marketFillabilityOverrides, setMarketFillabilityOverride,
+    marketReloadMinutes,
   } = useBotStore();
   const [loading, setLoading] = useState(false);
   const [diagnostic, setDiagnostic] = useState<
@@ -99,7 +100,8 @@ export function MarketsPanel() {
   // listed tickers appear immediately and expired ones drop out.
   useEffect(() => {
     if (!credentials) return;
-    const RELOAD_MINUTES = [0, 16, 31, 45];
+    const RELOAD_MINUTES =
+      marketReloadMinutes && marketReloadMinutes.length ? marketReloadMinutes : [0, 16, 31, 45];
     let cancelled = false;
     let timeoutId: number | undefined;
 
@@ -145,12 +147,13 @@ export function MarketsPanel() {
       cancelled = true;
       if (timeoutId !== undefined) window.clearTimeout(timeoutId);
     };
-  }, [credentials, setMarkets, log]);
+  }, [credentials, setMarkets, log, marketReloadMinutes]);
 
   // Live countdown to the next wall-clock aligned reload mark.
   const [nextMark, setNextMark] = useState<{ at: Date; secs: number } | null>(null);
   useEffect(() => {
-    const RELOAD_MINUTES = [0, 16, 31, 45];
+    const RELOAD_MINUTES =
+      marketReloadMinutes && marketReloadMinutes.length ? marketReloadMinutes : [0, 16, 31, 45];
     const compute = () => {
       const now = new Date();
       let at: Date | null = null;
@@ -171,7 +174,7 @@ export function MarketsPanel() {
     compute();
     const id = window.setInterval(compute, 1000);
     return () => window.clearInterval(id);
-  }, []);
+  }, [marketReloadMinutes]);
 
   const fmtClock = (d: Date) =>
     `${d.getHours()}:${d.getMinutes().toString().padStart(2, "0")}`;

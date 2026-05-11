@@ -55,6 +55,14 @@ export function SettingsPanel() {
   const setVaultLocked = useBotStore((s) => s.setVaultLocked);
   const idleLockMinutes = useBotStore((s) => s.idleLockMinutes);
   const setIdleLockMinutes = useBotStore((s) => s.setIdleLockMinutes);
+  const marketReloadMinutes = useBotStore((s) => s.marketReloadMinutes);
+  const setMarketReloadMinutes = useBotStore((s) => s.setMarketReloadMinutes);
+  const [reloadMinutesInput, setReloadMinutesInput] = useState(
+    (marketReloadMinutes ?? [0, 16, 31, 45]).join(", "),
+  );
+  useEffect(() => {
+    setReloadMinutesInput((marketReloadMinutes ?? [0, 16, 31, 45]).join(", "));
+  }, [marketReloadMinutes]);
   const [keyId, setKeyId] = useState(credentials?.keyId ?? "");
   const [pem, setPem] = useState(credentials?.privateKeyPem ?? "");
   const [proxy, setProxy] = useState(credentials?.corsProxy ?? encryptedCredentials?.corsProxy ?? CLOUD_PROXY);
@@ -435,6 +443,47 @@ export function SettingsPanel() {
             onChange={(e) => setIdleLockMinutes(Math.max(0, Math.min(240, Number(e.target.value) || 0)))}
             className="w-20"
           />
+        </div>
+        <div className="flex items-start justify-between gap-4 border-t border-border pt-3">
+          <div className="space-y-0.5">
+            <Label htmlFor="reload-mins" className="text-sm">Market reload minute marks</Label>
+            <p className="text-xs text-muted-foreground">
+              Comma-separated minutes (0–59) of every hour when the BTC 15-min markets list is reloaded.
+              Default: <code className="font-mono">0, 16, 31, 45</code>.
+            </p>
+          </div>
+          <div className="flex flex-col items-end gap-1">
+            <Input
+              id="reload-mins"
+              value={reloadMinutesInput}
+              onChange={(e) => setReloadMinutesInput(e.target.value)}
+              onBlur={() => {
+                const parsed = reloadMinutesInput
+                  .split(/[,\s]+/)
+                  .map((s) => s.trim())
+                  .filter(Boolean)
+                  .map((s) => Number(s))
+                  .filter((n) => Number.isFinite(n));
+                if (!parsed.length) {
+                  setMarketReloadMinutes([0, 16, 31, 45]);
+                  toast.info("Reset reload marks to default 0, 16, 31, 45");
+                  return;
+                }
+                const bad = parsed.find((n) => n < 0 || n > 59 || !Number.isInteger(n));
+                if (bad !== undefined) {
+                  toast.error(`Invalid minute "${bad}". Use integers 0–59.`);
+                  setReloadMinutesInput((marketReloadMinutes ?? [0, 16, 31, 45]).join(", "));
+                  return;
+                }
+                setMarketReloadMinutes(parsed);
+              }}
+              placeholder="0, 16, 31, 45"
+              className="w-48 font-mono"
+            />
+            <span className="text-[10px] text-muted-foreground">
+              Active: {(marketReloadMinutes ?? []).map((m) => `:${m.toString().padStart(2, "0")}`).join(" ")}
+            </span>
+          </div>
         </div>
       </div>
       <div className="flex gap-2">
