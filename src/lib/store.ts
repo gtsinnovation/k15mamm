@@ -48,6 +48,8 @@ export interface StrategyParams {
   requoteThresholdCents: number; // re-quote only if price moved by this much
   /** Max age (seconds) of book snapshot before we skip quoting. */
   maxBookAgeSec: number;
+  /** Minimum ask/bid price ratio. e.g. 4 means ask ≥ 4 × bid. */
+  askBidRatio: number;
 }
 
 export interface RiskLimits {
