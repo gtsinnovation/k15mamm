@@ -322,6 +322,18 @@ export const useBotStore = create<BotState>()(
       markets: [],
       setMarkets: (m) => set({ markets: m }),
 
+      marketRatioOverrides: {},
+      setMarketRatioOverride: (ticker, ratio) =>
+        set((s) => {
+          const next = { ...s.marketRatioOverrides };
+          if (ratio == null || !Number.isFinite(ratio)) {
+            delete next[ticker];
+          } else {
+            next[ticker] = Math.max(1, ratio);
+          }
+          return { marketRatioOverrides: next };
+        }),
+
       marketQuotes: {},
       upsertMarketQuote: (q) =>
         set((s) => ({ marketQuotes: { ...s.marketQuotes, [q.ticker]: q } })),
