@@ -163,6 +163,10 @@ interface BotState {
   trackedTickers: string[];
   toggleTicker: (t: string) => void;
 
+  /** Per-ticker overrides for the global StrategyParams.askBidRatio. */
+  marketRatioOverrides: Record<string, number>;
+  setMarketRatioOverride: (ticker: string, ratio: number | null) => void;
+
   markets: KalshiMarket[];
   setMarkets: (m: KalshiMarket[]) => void;
 
@@ -317,6 +321,18 @@ export const useBotStore = create<BotState>()(
 
       markets: [],
       setMarkets: (m) => set({ markets: m }),
+
+      marketRatioOverrides: {},
+      setMarketRatioOverride: (ticker, ratio) =>
+        set((s) => {
+          const next = { ...s.marketRatioOverrides };
+          if (ratio == null || !Number.isFinite(ratio)) {
+            delete next[ticker];
+          } else {
+            next[ticker] = Math.max(1, ratio);
+          }
+          return { marketRatioOverrides: next };
+        }),
 
       marketQuotes: {},
       upsertMarketQuote: (q) =>

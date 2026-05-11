@@ -2,6 +2,7 @@ import { useBotStore } from "@/lib/store";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { KalshiClient } from "@/lib/kalshi/client";
 import { toast } from "sonner";
 import { useEffect, useRef, useState } from "react";
@@ -9,7 +10,11 @@ import { RefreshCw, AlertTriangle, KeyRound, ShieldAlert, Inbox, CheckCircle2 } 
 import { runPreflight, type PreflightResult } from "@/lib/kalshi/preflight";
 
 export function MarketsPanel() {
-  const { markets, trackedTickers, toggleTicker, marketQuotes, positions, credentials, runState, setMarkets, log } = useBotStore();
+  const {
+    markets, trackedTickers, toggleTicker, marketQuotes, positions,
+    credentials, runState, setMarkets, log,
+    strategy, marketRatioOverrides, setMarketRatioOverride,
+  } = useBotStore();
   const [loading, setLoading] = useState(false);
   const [diagnostic, setDiagnostic] = useState<
     | { kind: "idle" }
@@ -108,6 +113,7 @@ export function MarketsPanel() {
               <th className="px-3 py-2 text-right">Book</th>
               <th className="px-3 py-2 text-right">Our quote</th>
               <th className="px-3 py-2 text-right">FV</th>
+              <th className="px-3 py-2 text-right">A/B</th>
               <th className="px-3 py-2 text-right">Pos</th>
             </tr>
           </thead>
@@ -116,6 +122,8 @@ export function MarketsPanel() {
               const q = marketQuotes[m.ticker];
               const pos = positions[m.ticker]?.position ?? 0;
               const tracked = trackedTickers.includes(m.ticker);
+              const override = marketRatioOverrides[m.ticker];
+              const effRatio = override ?? strategy.askBidRatio;
               return (
                 <tr key={m.ticker} className="border-t border-border/50 hover:bg-accent/30">
                   <td className="px-3 py-2"><Checkbox checked={tracked} onCheckedChange={() => toggleTicker(m.ticker)} /></td>
@@ -150,13 +158,44 @@ export function MarketsPanel() {
                   <td className="px-3 py-2 text-right font-mono text-xs">
                     {q ? `${(q.fairValue * 100).toFixed(1)}¢` : "—"}
                   </td>
+                  <td className="px-3 py-2 text-right font-mono text-xs">
+                    <div className="flex items-center justify-end gap-1">
+                      <Input
+                        type="number"
+                        min={1}
+                        max={50}
+                        step={0.25}
+                        value={effRatio}
+                        onChange={(e) => {
+                          const v = parseFloat(e.target.value);
+                          setMarketRatioOverride(m.ticker, Number.isFinite(v) ? v : null);
+                        }}
+                        className={`h-6 w-16 px-1 text-right font-mono text-xs ${
+                          override != null ? "border-primary text-primary" : ""
+                        }`}
+                        title={override != null
+                          ? `Override active (global ${strategy.askBidRatio}×). Clear to revert.`
+                          : `Using global ${strategy.askBidRatio}×`}
+                      />
+                      {override != null && (
+                        <button
+                          type="button"
+                          onClick={() => setMarketRatioOverride(m.ticker, null)}
+                          className="text-muted-foreground hover:text-foreground"
+                          title="Reset to global"
+                        >
+                          ×
+                        </button>
+                      )}
+                    </div>
+                  </td>
                   <td className="px-3 py-2 text-right font-mono text-xs">{pos}</td>
                 </tr>
               );
             })}
             {markets.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-3 py-8">
+                <td colSpan={7} className="px-3 py-8">
                   <EmptyDiagnostic
                     state={!credentials ? { kind: "no-creds" } : diagnostic}
                     loading={loading}
