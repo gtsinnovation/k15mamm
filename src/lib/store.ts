@@ -185,6 +185,10 @@ interface BotState {
   markets: KalshiMarket[];
   setMarkets: (m: KalshiMarket[]) => void;
 
+  /** Wall-clock minute marks (0–59) at which to reload the markets list. */
+  marketReloadMinutes: number[];
+  setMarketReloadMinutes: (mins: number[]) => void;
+
   marketQuotes: Record<string, MarketQuote>;
   upsertMarketQuote: (q: MarketQuote) => void;
 
