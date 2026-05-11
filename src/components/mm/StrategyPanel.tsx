@@ -30,6 +30,8 @@ export function StrategyPanel() {
            onChange={(v) => setStrategy({ k: v })} format={(v) => v.toFixed(1)} />
       <Row label="Min edge (cents)" value={strategy.minEdgeCents} min={1} max={20} step={1}
            onChange={(v) => setStrategy({ minEdgeCents: v })} format={(v) => `${v}¢`} />
+      <Row label="Ask / Bid ratio" value={strategy.askBidRatio} min={1} max={20} step={0.25}
+           onChange={(v) => setStrategy({ askBidRatio: v })} format={(v) => `${v.toFixed(2)}×`} />
       <Row label="Max quote size" value={strategy.maxQuoteSize} min={1} max={100} step={1}
            onChange={(v) => setStrategy({ maxQuoteSize: v })} format={(v) => `${v}`} />
       <Row label="Tick interval (s)" value={strategy.tickIntervalMs / 1000} min={1} max={60} step={1}
