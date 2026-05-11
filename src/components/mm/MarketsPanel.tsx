@@ -57,6 +57,35 @@ export function MarketsPanel() {
     }
   };
 
+  // Realtime book updates: while the bot is NOT running (so the scheduler
+  // isn't already refreshing markets every tick), poll the BTC 15-min
+  // markets every 5s so yes_bid / yes_ask stay live in the table.
+  const pollingRef = useRef(false);
+  useEffect(() => {
+    if (!credentials) return;
+    if (runState === "running") return; // scheduler already refreshes each tick
+    let cancelled = false;
+    const tick = async () => {
+      if (cancelled || pollingRef.current) return;
+      pollingRef.current = true;
+      try {
+        const client = new KalshiClient(credentials);
+        const ms = await client.getBtc15MinMarkets();
+        if (!cancelled) setMarkets(ms);
+      } catch {
+        // ignore transient errors — UI keeps last snapshot
+      } finally {
+        pollingRef.current = false;
+      }
+    };
+    void tick();
+    const id = window.setInterval(tick, 5000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [credentials, runState, setMarkets]);
+
   return (
     <div className="rounded-lg border border-border bg-card">
       <div className="flex items-start justify-between gap-2 border-b border-border p-4">
