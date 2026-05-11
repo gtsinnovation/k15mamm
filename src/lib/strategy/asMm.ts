@@ -36,6 +36,8 @@ export interface AsMmConfig {
   maxGlobalInventory: number;
   /** Max age (seconds) of book snapshot before we skip quoting. */
   maxBookAgeSec: number;
+  /** Minimum ask/bid price ratio enforced on quotes. Default 4. */
+  askBidRatio?: number;
 }
 
 export interface AsMmQuote {
