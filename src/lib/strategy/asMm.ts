@@ -146,6 +146,25 @@ function quoteCore(
   bid = Math.min(bid, r - minEdge);
   ask = Math.max(ask, r + minEdge);
 
+  // Profitability constraint: ask must be at least ASK_BID_RATIO × bid so any
+  // contract we buy can be resold at a guaranteed multiple inside the cycle.
+  // If the natural spread doesn't satisfy this, widen by lowering the bid
+  // (preferred: keeps the ask reachable) and only raise the ask if the bid
+  // is already at the floor.
+  const ASK_BID_RATIO = 4;
+  bid = clampPrice(bid);
+  ask = clampPrice(ask);
+  if (bid > 0 && ask < ASK_BID_RATIO * bid) {
+    // Try lowering bid first so ask = ASK_BID_RATIO * bid stays ≤ 0.99.
+    const maxBidForAsk = ask / ASK_BID_RATIO;
+    if (maxBidForAsk >= 0.01) {
+      bid = maxBidForAsk;
+    } else {
+      bid = 0.01;
+      ask = Math.min(0.99, ASK_BID_RATIO * bid);
+    }
+  }
+
   return {
     bid: clampPrice(bid),
     ask: clampPrice(ask),
