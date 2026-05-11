@@ -163,6 +163,10 @@ interface BotState {
   trackedTickers: string[];
   toggleTicker: (t: string) => void;
 
+  /** Per-ticker overrides for the global StrategyParams.askBidRatio. */
+  marketRatioOverrides: Record<string, number>;
+  setMarketRatioOverride: (ticker: string, ratio: number | null) => void;
+
   markets: KalshiMarket[];
   setMarkets: (m: KalshiMarket[]) => void;
 
