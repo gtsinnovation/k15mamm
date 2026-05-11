@@ -147,7 +147,7 @@ export function MarketsPanel() {
       cancelled = true;
       if (timeoutId !== undefined) window.clearTimeout(timeoutId);
     };
-  }, [credentials, setMarkets, log]);
+  }, [credentials, setMarkets, log, marketReloadMinutes]);
 
   // Live countdown to the next wall-clock aligned reload mark.
   const [nextMark, setNextMark] = useState<{ at: Date; secs: number } | null>(null);
