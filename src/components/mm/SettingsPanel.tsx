@@ -55,6 +55,14 @@ export function SettingsPanel() {
   const setVaultLocked = useBotStore((s) => s.setVaultLocked);
   const idleLockMinutes = useBotStore((s) => s.idleLockMinutes);
   const setIdleLockMinutes = useBotStore((s) => s.setIdleLockMinutes);
+  const marketReloadMinutes = useBotStore((s) => s.marketReloadMinutes);
+  const setMarketReloadMinutes = useBotStore((s) => s.setMarketReloadMinutes);
+  const [reloadMinutesInput, setReloadMinutesInput] = useState(
+    (marketReloadMinutes ?? [0, 16, 31, 45]).join(", "),
+  );
+  useEffect(() => {
+    setReloadMinutesInput((marketReloadMinutes ?? [0, 16, 31, 45]).join(", "));
+  }, [marketReloadMinutes]);
   const [keyId, setKeyId] = useState(credentials?.keyId ?? "");
   const [pem, setPem] = useState(credentials?.privateKeyPem ?? "");
   const [proxy, setProxy] = useState(credentials?.corsProxy ?? encryptedCredentials?.corsProxy ?? CLOUD_PROXY);
