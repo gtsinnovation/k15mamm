@@ -270,6 +270,11 @@ interface BotState {
   recordWatchdogRestart: () => void;
   raiseWatchdogAlert: (reason: string) => void;
   dismissWatchdogAlert: () => void;
+
+  /** Per-ticker count of consecutive ratio-unfillable quotes (resets on a fillable one). */
+  unfillableQuoteRuns: Record<string, { count: number; reason: string; ts: number }>;
+  recordUnfillableQuote: (ticker: string, reason: string) => void;
+  recordFillableQuote: (ticker: string) => void;
 }
 
 const DEFAULT_STRATEGY: StrategyParams = {
