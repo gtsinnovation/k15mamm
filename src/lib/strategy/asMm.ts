@@ -257,12 +257,16 @@ export function quoteNormal(
 ): AsMmQuote {
   const c = quoteCore(m, globalInventory, cfg);
   if (!c) return emptyQuote(m.ticker);
+  if (c.debug.unfillableReason) {
+    return { ...emptyQuote(m.ticker), debug: c.debug };
+  }
   return {
     ticker: m.ticker,
     bidPrice: round2(c.bid),
     askPrice: round2(c.ask),
     bidSize: c.size,
     askSize: c.size,
+    debug: c.debug,
   };
 }
 
@@ -274,13 +278,16 @@ export function quoteWithInventoryCap(
 ): AsMmQuote {
   const c = quoteCore(m, globalInventory, cfg);
   if (!c) return emptyQuote(m.ticker);
+  if (c.debug.unfillableReason) {
+    return { ...emptyQuote(m.ticker), debug: c.debug };
+  }
   if (m.positionYes > 0) {
-    return { ticker: m.ticker, bidPrice: null, askPrice: round2(c.ask), bidSize: 0, askSize: c.size };
+    return { ticker: m.ticker, bidPrice: null, askPrice: round2(c.ask), bidSize: 0, askSize: c.size, debug: c.debug };
   }
   if (m.positionYes < 0) {
-    return { ticker: m.ticker, bidPrice: round2(c.bid), askPrice: null, bidSize: c.size, askSize: 0 };
+    return { ticker: m.ticker, bidPrice: round2(c.bid), askPrice: null, bidSize: c.size, askSize: 0, debug: c.debug };
   }
-  return emptyQuote(m.ticker);
+  return { ...emptyQuote(m.ticker), debug: c.debug };
 }
 
 /**
