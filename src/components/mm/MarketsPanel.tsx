@@ -100,7 +100,8 @@ export function MarketsPanel() {
   // listed tickers appear immediately and expired ones drop out.
   useEffect(() => {
     if (!credentials) return;
-    const RELOAD_MINUTES = [0, 16, 31, 45];
+    const RELOAD_MINUTES =
+      marketReloadMinutes && marketReloadMinutes.length ? marketReloadMinutes : [0, 16, 31, 45];
     let cancelled = false;
     let timeoutId: number | undefined;
 
