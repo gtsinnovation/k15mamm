@@ -2,6 +2,7 @@ import { useBotStore } from "@/lib/store";
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 import { restartTimerIfRunning } from "@/lib/scheduler/loop";
+import { AlertTriangle } from "lucide-react";
 
 function Row({ label, value, min, max, step, onChange, format }: {
   label: string; value: number; min: number; max: number; step: number; onChange: (v: number) => void; format?: (v: number) => string;
