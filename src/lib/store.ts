@@ -175,6 +175,13 @@ interface BotState {
   marketRatioOverrides: Record<string, number>;
   setMarketRatioOverride: (ticker: string, ratio: number | null) => void;
 
+  /** Per-ticker overrides for fillability thresholds (partial allowed). */
+  marketFillabilityOverrides: Record<string, Partial<FillabilityThresholds>>;
+  setMarketFillabilityOverride: (
+    ticker: string,
+    patch: Partial<FillabilityThresholds> | null,
+  ) => void;
+
   markets: KalshiMarket[];
   setMarkets: (m: KalshiMarket[]) => void;
 
