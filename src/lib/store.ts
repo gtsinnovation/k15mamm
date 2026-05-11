@@ -277,6 +277,7 @@ const DEFAULT_STRATEGY: StrategyParams = {
   maxQuoteSize: 5,
   requoteThresholdCents: 1,
   maxBookAgeSec: 5.0,
+  askBidRatio: 4,
 };
 
 const DEFAULT_RISK: RiskLimits = {
