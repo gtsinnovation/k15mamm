@@ -189,6 +189,12 @@ export function MarketsPanel() {
                           ×
                         </button>
                       )}
+                      <FillabilityPopover
+                        ticker={m.ticker}
+                        global={strategy.fillability}
+                        override={marketFillabilityOverrides[m.ticker]}
+                        onChange={(patch) => setMarketFillabilityOverride(m.ticker, patch)}
+                      />
                     </div>
                   </td>
                   <td className="px-3 py-2 text-right font-mono text-xs">{pos}</td>
