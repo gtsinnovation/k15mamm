@@ -54,6 +54,35 @@ export function StrategyPanel() {
            onChange={(v) => setStrategy({ minEdgeCents: v })} format={(v) => `${v}¢`} />
       <Row label="Ask / Bid ratio" value={strategy.askBidRatio} min={1} max={20} step={0.25}
            onChange={(v) => setStrategy({ askBidRatio: v })} format={(v) => `${v.toFixed(2)}×`} />
+
+      <div className="space-y-3 rounded-md border border-border/60 bg-muted/20 p-3">
+        <div className="text-sm font-semibold">Fillability thresholds</div>
+        <p className="text-xs text-muted-foreground">
+          Used to flag quotes as unfillable. Per-market overrides can be set in the markets table.
+        </p>
+        <Row
+          label="Pinned bid ≤"
+          value={strategy.fillability.pinnedBidMax}
+          min={0.01} max={0.10} step={0.001}
+          onChange={(v) => setStrategy({ fillability: { ...strategy.fillability, pinnedBidMax: v } })}
+          format={(v) => `${(v * 100).toFixed(1)}¢`}
+        />
+        <Row
+          label="Pinned ask ≥"
+          value={strategy.fillability.pinnedAskMin}
+          min={0.90} max={0.99} step={0.001}
+          onChange={(v) => setStrategy({ fillability: { ...strategy.fillability, pinnedAskMin: v } })}
+          format={(v) => `${(v * 100).toFixed(1)}¢`}
+        />
+        <Row
+          label="Outside-book gap"
+          value={strategy.fillability.outsideBookGap}
+          min={0.05} max={0.95} step={0.01}
+          onChange={(v) => setStrategy({ fillability: { ...strategy.fillability, outsideBookGap: v } })}
+          format={(v) => `${(v * 100).toFixed(0)}¢`}
+        />
+      </div>
+
       <Row label="Max quote size" value={strategy.maxQuoteSize} min={1} max={100} step={1}
            onChange={(v) => setStrategy({ maxQuoteSize: v })} format={(v) => `${v}`} />
       <Row label="Tick interval (s)" value={strategy.tickIntervalMs / 1000} min={1} max={60} step={1}
