@@ -183,10 +183,10 @@ export class KalshiClient {
    * `isBtc15MinMarket` (BTC + has strike + closes within ~30 min).
    */
   async getBtc15MinMarkets(): Promise<KalshiMarket[]> {
-    // Kalshi's BTC 15-minute series tickers. KXBTC is the primary
-    // 15-minute series; the others are kept for backwards compatibility
-    // and to catch series renames.
-    const candidateSeries = ["KXBTC", "KXBTCD", "KXBTCH", "KXBTC15"];
+    // Kalshi's BTC 15-minute series ticker is `KXBTC15M`. We probe it
+    // first; the others are kept as fallbacks in case Kalshi renames
+    // the series.
+    const candidateSeries = ["KXBTC15M"];
     const collected = new Map<string, KalshiMarket>();
 
     for (const series of candidateSeries) {
