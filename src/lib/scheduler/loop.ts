@@ -196,9 +196,27 @@ async function quoteMarket(
       s.marketRatioOverrides?.[market.ticker] ?? s.strategy.askBidRatio,
   });
 
-  // If neither side is quotable (no book, no position to reduce), skip.
+  // Debug log every generated quote: mid, reservation, askBidRatio, raw vs final.
+  if (asQuote.debug) {
+    const d = asQuote.debug;
+    const fmt = (x: number) => (x * 100).toFixed(1);
+    s.log(
+      "quote",
+      `quote-debug mid=${fmt(d.mid)}¢ r=${fmt(d.reservation)}¢ ratio=${d.askBidRatio.toFixed(2)}× ` +
+        `raw[${fmt(d.rawBid)}¢/${fmt(d.rawAsk)}¢] final[${fmt(d.finalBid)}¢/${fmt(d.finalAsk)}¢]` +
+        (d.unfillableReason ? ` UNFILLABLE: ${d.unfillableReason}` : ""),
+      market.ticker,
+    );
+    if (d.unfillableReason) {
+      s.recordUnfillableQuote(market.ticker, d.unfillableReason);
+    } else {
+      s.recordFillableQuote(market.ticker);
+    }
+  }
+
+  // If neither side is quotable (no book, no position to reduce, or ratio-blocked), skip.
   if (asQuote.bidPrice == null && asQuote.askPrice == null) {
-    s.log("info", "no quote (insufficient book)", market.ticker);
+    s.log("info", asQuote.debug?.unfillableReason ?? "no quote (insufficient book)", market.ticker);
     return;
   }
 
