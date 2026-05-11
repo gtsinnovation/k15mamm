@@ -158,13 +158,44 @@ export function MarketsPanel() {
                   <td className="px-3 py-2 text-right font-mono text-xs">
                     {q ? `${(q.fairValue * 100).toFixed(1)}¢` : "—"}
                   </td>
+                  <td className="px-3 py-2 text-right font-mono text-xs">
+                    <div className="flex items-center justify-end gap-1">
+                      <Input
+                        type="number"
+                        min={1}
+                        max={50}
+                        step={0.25}
+                        value={effRatio}
+                        onChange={(e) => {
+                          const v = parseFloat(e.target.value);
+                          setMarketRatioOverride(m.ticker, Number.isFinite(v) ? v : null);
+                        }}
+                        className={`h-6 w-16 px-1 text-right font-mono text-xs ${
+                          override != null ? "border-primary text-primary" : ""
+                        }`}
+                        title={override != null
+                          ? `Override active (global ${strategy.askBidRatio}×). Clear to revert.`
+                          : `Using global ${strategy.askBidRatio}×`}
+                      />
+                      {override != null && (
+                        <button
+                          type="button"
+                          onClick={() => setMarketRatioOverride(m.ticker, null)}
+                          className="text-muted-foreground hover:text-foreground"
+                          title="Reset to global"
+                        >
+                          ×
+                        </button>
+                      )}
+                    </div>
+                  </td>
                   <td className="px-3 py-2 text-right font-mono text-xs">{pos}</td>
                 </tr>
               );
             })}
             {markets.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-3 py-8">
+                <td colSpan={7} className="px-3 py-8">
                   <EmptyDiagnostic
                     state={!credentials ? { kind: "no-creds" } : diagnostic}
                     loading={loading}
