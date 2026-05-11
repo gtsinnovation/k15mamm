@@ -164,10 +164,23 @@ function quoteCore(
   const T = Math.max(m.timeToExpirySec, 1) / SECONDS_PER_YEAR;
   const sigma = cfg.sigmaAnnual;
   const spread = cfg.gamma * sigma * sigma * T + 2.0 / Math.max(cfg.k, 1e-6);
-  const half = spread / 2;
+  let half = spread / 2;
   const skew = inventorySkew(m.positionYes, globalInventory);
 
   const r = mid - skew;
+
+  // Cap half-spread so quotes stay inside the fillable window when
+  // geometrically feasible. The AS formula's `2/k` term dominates on
+  // short-dated contracts and otherwise blows quotes out to 1¢/99¢.
+  const thrPre = { ...DEFAULT_FILLABILITY, ...(cfg.fillability ?? {}) };
+  const minEdgeDollars = cfg.minEdgeCents / 100;
+  const maxHalfFillable = Math.min(
+    r - thrPre.pinnedBidMax,
+    thrPre.pinnedAskMin - r,
+  );
+  if (maxHalfFillable >= minEdgeDollars && half > maxHalfFillable) {
+    half = maxHalfFillable;
+  }
 
   let bid = r - half;
   let ask = r + half;
