@@ -127,16 +127,57 @@ async function pollFills(client: KalshiClient) {
       const price = f.side === "yes" ? yesPriceCents : noPriceCents;
       const count =
         f.count ?? (f.count_fp != null ? parseFloat(f.count_fp) : undefined);
-      const ticker = f.ticker ?? f.market_ticker ?? "unknown";
       const ts = new Date(f.created_time).getTime();
       if (ts > maxTs) maxTs = ts;
+
+      // ---- Ticker reconciliation ----
+      // Prefer the fill's own ticker, falling back to market_ticker, then to
+      // the order ledger's stored ticker. If the fill reports a ticker that
+      // disagrees with what we placed, flag the mismatch on the ledger row
+      // and emit a warn-level log entry so operators can investigate.
+      const fillTickerRaw = f.ticker ?? f.market_ticker ?? null;
+      const ledgerEntry = s.orderLedger.find((e) => e.orderId === f.order_id) ?? null;
+      const expectedTicker = ledgerEntry?.ticker ?? null;
+
+      let resolvedTicker: string | null =
+        fillTickerRaw && fillTickerRaw !== "unknown" ? fillTickerRaw : expectedTicker;
+
+      if (fillTickerRaw && expectedTicker && fillTickerRaw !== expectedTicker) {
+        s.log(
+          "warn",
+          `fill ticker mismatch: order=${f.order_id} fill=${fillTickerRaw} expected=${expectedTicker}; using expected`,
+          expectedTicker,
+        );
+        // Prefer the ledger's expected ticker — that's the market we sized
+        // collateral against and the one the user sees in the UI.
+        resolvedTicker = expectedTicker;
+      }
+
+      // Hard assertion: we must always resolve a ticker. If neither the fill
+      // nor the ledger gives us one, emit an error and skip logging/closing
+      // so we don't poison the audit trail with "unknown".
+      if (!resolvedTicker) {
+        s.log(
+          "error",
+          `fill cannot resolve ticker (no fill.ticker / market_ticker and no ledger entry): order=${f.order_id} trade=${f.trade_id}`,
+        );
+        continue;
+      }
+
       s.log(
         "fill",
         `${f.action.toUpperCase()} ${count ?? "?"} @ ${price ?? "?"}¢ ${f.is_taker ? "(taker)" : "(maker)"} order=${f.order_id}`,
-        ticker
+        resolvedTicker,
       );
       // Mark the order as filled in the ledger (releases collateral row).
-      s.closeOrderLedger(f.order_id, "filled", price);
+      const { mismatch } = s.closeOrderLedger(f.order_id, "filled", price, fillTickerRaw ?? undefined);
+      if (mismatch) {
+        s.log(
+          "warn",
+          `ledger flagged ticker mismatch for order=${f.order_id}`,
+          resolvedTicker,
+        );
+      }
     }
     s.addSeenFillIds(fresh.map((f) => f.trade_id));
     s.setLastFillTs(maxTs);
