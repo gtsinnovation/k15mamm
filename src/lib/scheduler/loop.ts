@@ -236,9 +236,17 @@ async function quoteMarket(
     }
   }
 
-  // If neither side is quotable (no book, no position to reduce, or ratio-blocked), skip.
-  if (asQuote.bidPrice == null && asQuote.askPrice == null) {
-    s.log("info", asQuote.debug?.unfillableReason ?? "no quote (insufficient book)", market.ticker);
+  // VALIDATION: every quote must have BOTH a bid and an ask. If either side
+  // is missing, block all order placement — we never quote one-sided.
+  if (asQuote.bidPrice == null || asQuote.askPrice == null) {
+    const reason =
+      asQuote.debug?.unfillableReason ??
+      (asQuote.bidPrice == null && asQuote.askPrice == null
+        ? "no quote (insufficient book)"
+        : asQuote.bidPrice == null
+        ? "missing bid side — blocking placement"
+        : "missing ask side — blocking placement");
+    s.log("info", reason, market.ticker);
     return;
   }
 
@@ -249,193 +257,205 @@ async function quoteMarket(
       ? 0.5 * (asState.bestBid + asState.bestAsk)
       : asState.bestBid ?? asState.bestAsk ?? 0.5;
   const quote = {
-    bidCents: asQuote.bidPrice != null ? Math.round(asQuote.bidPrice * 100) : 0,
-    askCents: asQuote.askPrice != null ? Math.round(asQuote.askPrice * 100) : 100,
+    bidCents: Math.round(asQuote.bidPrice * 100),
+    askCents: Math.round(asQuote.askPrice * 100),
     fairValue: midDollars,
   };
   const size = s.strategy.maxQuoteSize;
-  const placeBid = asQuote.bidPrice != null && asQuote.bidSize > 0;
-  const placeAsk = asQuote.askPrice != null && asQuote.askSize > 0;
 
-    // Re-quote threshold: skip if previous quote within threshold and still resting.
-    const prev = s.lastQuotes[market.ticker];
-    const threshold = s.strategy.requoteThresholdCents;
-    if (
-      prev &&
-      Math.abs(prev.bidCents - quote.bidCents) < threshold &&
-      Math.abs(prev.askCents - quote.askCents) < threshold &&
-      prev.size === size
-    ) {
-      // Verify orders are still resting; if so, skip.
-      try {
-        const open = await client.getOpenOrders(market.ticker);
-        const stillResting = open.length > 0;
-        if (stillResting) {
-          s.log("info", `no re-quote (Δ < ${threshold}¢)`, market.ticker);
-          return;
-        }
-      } catch {
-        // fall through and re-quote
+  // Quotes are mirrored onto the NO contract (NO buy ≡ YES sell at 100−p
+  // and vice versa). Per project rule: every quote must include bid AND
+  // ask on BOTH YES and NO contracts.
+  const noBidCents = 100 - quote.askCents; // buy NO  (bid on NO market)
+  const noAskCents = 100 - quote.bidCents; // sell NO (ask on NO market)
+  const allLegPrices = [quote.bidCents, quote.askCents, noBidCents, noAskCents];
+  if (allLegPrices.some((p) => !Number.isFinite(p) || p < 1 || p > 99)) {
+    s.log(
+      "warn",
+      `invalid leg prices yesBid=${quote.bidCents}¢ yesAsk=${quote.askCents}¢ ` +
+        `noBid=${noBidCents}¢ noAsk=${noAskCents}¢ — blocking placement`,
+      market.ticker,
+    );
+    return;
+  }
+
+  // Re-quote threshold: skip if previous quote within threshold and still resting.
+  const prev = s.lastQuotes[market.ticker];
+  const threshold = s.strategy.requoteThresholdCents;
+  if (
+    prev &&
+    Math.abs(prev.bidCents - quote.bidCents) < threshold &&
+    Math.abs(prev.askCents - quote.askCents) < threshold &&
+    prev.size === size
+  ) {
+    try {
+      const open = await client.getOpenOrders(market.ticker);
+      const stillResting = open.length > 0;
+      if (stillResting) {
+        s.log("info", `no re-quote (Δ < ${threshold}¢)`, market.ticker);
+        return;
       }
+    } catch {
+      // fall through and re-quote
     }
+  }
 
   // Cancel existing open orders on this ticker, then place new bid/ask.
-    let cancelledCount = 0;
-    let releasedCents = 0;
+  let cancelledCount = 0;
+  let releasedCents = 0;
   try {
     const open = await client.getOpenOrders(market.ticker);
-      // Compute collateral that will be released by cancelling these orders.
-      for (const o of open) {
-        const price = o.yes_price ?? o.no_price ?? 0;
-        if (o.action === "buy") releasedCents += price * o.count;
-        else releasedCents += (100 - price) * o.count;
-      }
-      const results = await Promise.allSettled(
-        open.map((o) =>
-          client
-            .cancelOrder(o.order_id)
-            .then(() => {
-              s.log("info", `cancelled ${o.order_id} (${o.action} ${o.yes_price ?? o.no_price}¢ × ${o.count})`, market.ticker);
-              s.closeOrderLedger(o.order_id, "cancelled");
-              return true;
-            })
-        )
+    for (const o of open) {
+      const price = o.yes_price ?? o.no_price ?? 0;
+      if (o.action === "buy") releasedCents += price * o.count;
+      else releasedCents += (100 - price) * o.count;
+    }
+    const results = await Promise.allSettled(
+      open.map((o) =>
+        client.cancelOrder(o.order_id).then(() => {
+          s.log(
+            "info",
+            `cancelled ${o.order_id} (${o.action} ${o.yes_price ?? o.no_price}¢ × ${o.count})`,
+            market.ticker,
+          );
+          s.closeOrderLedger(o.order_id, "cancelled");
+          return true;
+        }),
+      ),
+    );
+    cancelledCount = results.filter((r) => r.status === "fulfilled").length;
+    if (cancelledCount > 0 && releasedCents > 0) {
+      s.log(
+        "info",
+        `collateral released: ${fmtUsd(releasedCents)} (${cancelledCount} order${cancelledCount === 1 ? "" : "s"} cancelled)`,
+        market.ticker,
       );
-      cancelledCount = results.filter((r) => r.status === "fulfilled").length;
-      if (cancelledCount > 0 && releasedCents > 0) {
-        s.log(
-          "info",
-          `collateral released: ${fmtUsd(releasedCents)} (${cancelledCount} order${cancelledCount === 1 ? "" : "s"} cancelled)`,
-          market.ticker
-        );
-      }
+    }
   } catch (e) {
     s.log("warn", `cancel: ${(e as Error).message}`, market.ticker);
   }
 
-    // Wait until cancellations are confirmed by the API before placing new orders.
-    if (cancelledCount > 0) {
-      const ok = await waitForCancels(client, market.ticker);
-      if (!ok) {
-        s.log("warn", "cancel-confirm timeout — skipping place", market.ticker);
-        return;
+  if (cancelledCount > 0) {
+    const ok = await waitForCancels(client, market.ticker);
+    if (!ok) {
+      s.log("warn", "cancel-confirm timeout — skipping place", market.ticker);
+      return;
+    }
+  }
+
+  // Per-market position-cap check applied to YES legs (NO legs mirror YES
+  // economically and are gated by the same cap).
+  const canBuy = pos + size <= s.risk.perMarketPositionCap;
+  const canSell = pos - size >= -s.risk.perMarketPositionCap;
+  if (!canBuy || !canSell) {
+    s.log(
+      "warn",
+      `position cap would block ${!canBuy ? "buy" : "sell"} side — blocking full 4-leg quote (pos=${pos}, cap=${s.risk.perMarketPositionCap})`,
+      market.ticker,
+    );
+    return;
+  }
+
+  type Leg = {
+    label: string;
+    contractSide: "yes" | "no";
+    action: "buy" | "sell";
+    priceCents: number;
+    ledgerSide: "bid" | "ask";
+    bookSide: "bid" | "ask";
+  };
+  const legs: Leg[] = [
+    { label: "YES BID", contractSide: "yes", action: "buy",  priceCents: quote.bidCents, ledgerSide: "bid", bookSide: "bid" },
+    { label: "YES ASK", contractSide: "yes", action: "sell", priceCents: quote.askCents, ledgerSide: "ask", bookSide: "ask" },
+    { label: "NO BID",  contractSide: "no",  action: "buy",  priceCents: noBidCents,     ledgerSide: "bid", bookSide: "bid" },
+    { label: "NO ASK",  contractSide: "no",  action: "sell", priceCents: noAskCents,     ledgerSide: "ask", bookSide: "ask" },
+  ];
+
+  let yesBidOrderId: string | undefined;
+  let yesAskOrderId: string | undefined;
+  let yesBidClientId: string | undefined;
+  let yesAskClientId: string | undefined;
+
+  try {
+    for (const leg of legs) {
+      const clientId = await makeClientId(
+        market.ticker,
+        `${leg.contractSide}-${leg.bookSide}` as unknown as "bid" | "ask",
+        leg.priceCents,
+        size,
+      );
+      if (inFlightClientIds.has(clientId)) continue;
+      inFlightClientIds.add(clientId);
+      try {
+        const orderArgs: Parameters<typeof client.placeOrder>[0] = {
+          ticker: market.ticker,
+          side: leg.contractSide,
+          action: leg.action,
+          count: size,
+          type: "limit",
+          client_order_id: clientId,
+        };
+        if (leg.contractSide === "yes") orderArgs.yes_price = leg.priceCents;
+        else orderArgs.no_price = leg.priceCents;
+        const r = await client.placeOrder(orderArgs);
+        const orderId = r.order?.order_id;
+        const reservedCents =
+          leg.action === "buy"
+            ? leg.priceCents * size
+            : (100 - leg.priceCents) * size;
+        s.log(
+          "info",
+          `placed ${leg.label} ${leg.priceCents}¢ × ${size} → reserves ${fmtUsd(reservedCents)} → ${orderId ?? "?"}`,
+          market.ticker,
+        );
+        if (orderId) {
+          s.appendOrderLedger({
+            orderId,
+            clientOrderId: clientId,
+            ticker: market.ticker,
+            side: leg.ledgerSide,
+            action: leg.action,
+            priceCents: leg.priceCents,
+            size,
+            reservedCents,
+            releasedCents: 0,
+            status: "resting",
+            placedAt: Date.now(),
+          });
+        }
+        if (leg.contractSide === "yes" && leg.bookSide === "bid") {
+          yesBidOrderId = orderId;
+          yesBidClientId = clientId;
+        } else if (leg.contractSide === "yes" && leg.bookSide === "ask") {
+          yesAskOrderId = orderId;
+          yesAskClientId = clientId;
+        }
+      } finally {
+        inFlightClientIds.delete(clientId);
       }
     }
 
-  // Skip side if it would exceed cap after fill.
-  const canBuy = placeBid && pos + size <= s.risk.perMarketPositionCap;
-  const canSell = placeAsk && pos - size >= -s.risk.perMarketPositionCap;
-
-    let bidOrderId: string | undefined;
-    let askOrderId: string | undefined;
-    let bidClientId: string | undefined;
-    let askClientId: string | undefined;
-
-  try {
-    if (canBuy) {
-        bidClientId = await makeClientId(market.ticker, "bid", quote.bidCents, size);
-        if (!inFlightClientIds.has(bidClientId)) {
-          inFlightClientIds.add(bidClientId);
-          try {
-            const r = await client.placeOrder({
-              ticker: market.ticker,
-              side: "yes",
-              action: "buy",
-              count: size,
-              yes_price: quote.bidCents,
-              type: "limit",
-              client_order_id: bidClientId,
-            });
-            bidOrderId = r.order?.order_id;
-            const bidColl = quote.bidCents * size;
-            s.log(
-              "info",
-              `placed BID ${quote.bidCents}¢ × ${size} → reserves ${fmtUsd(bidColl)} → ${bidOrderId ?? "?"}`,
-              market.ticker
-            );
-            if (bidOrderId) {
-              s.appendOrderLedger({
-                orderId: bidOrderId,
-                clientOrderId: bidClientId,
-                ticker: market.ticker,
-                side: "bid",
-                action: "buy",
-                priceCents: quote.bidCents,
-                size,
-                reservedCents: bidColl,
-                releasedCents: 0,
-                status: "resting",
-                placedAt: Date.now(),
-              });
-            }
-          } finally {
-            inFlightClientIds.delete(bidClientId);
-          }
-        }
-    }
-    if (canSell) {
-        askClientId = await makeClientId(market.ticker, "ask", quote.askCents, size);
-        if (!inFlightClientIds.has(askClientId)) {
-          inFlightClientIds.add(askClientId);
-          try {
-            const r = await client.placeOrder({
-              ticker: market.ticker,
-              side: "yes",
-              action: "sell",
-              count: size,
-              yes_price: quote.askCents,
-              type: "limit",
-              client_order_id: askClientId,
-            });
-            askOrderId = r.order?.order_id;
-            const sellOpensShort = Math.max(0, size - Math.max(0, pos));
-            const askColl = (100 - quote.askCents) * sellOpensShort;
-            s.log(
-              "info",
-              `placed ASK ${quote.askCents}¢ × ${size} → reserves ${fmtUsd(askColl)} → ${askOrderId ?? "?"}`,
-              market.ticker
-            );
-            if (askOrderId) {
-              s.appendOrderLedger({
-                orderId: askOrderId,
-                clientOrderId: askClientId,
-                ticker: market.ticker,
-                side: "ask",
-                action: "sell",
-                priceCents: quote.askCents,
-                size,
-                reservedCents: askColl,
-                releasedCents: 0,
-                status: "resting",
-                placedAt: Date.now(),
-              });
-            }
-          } finally {
-            inFlightClientIds.delete(askClientId);
-          }
-        }
-    }
     // Net collateral delta vs. what was just released by the cancellations above.
     const newReserved = reservedForQuote(quote.bidCents, quote.askCents, size, pos);
     const deltaCents = newReserved.totalReservedCents - releasedCents;
     const deltaSign = deltaCents > 0 ? "+" : deltaCents < 0 ? "−" : "±";
     s.log(
       "quote",
-      `bid ${quote.bidCents}¢ × ${size} / ask ${quote.askCents}¢ × ${size} (fv ${(quote.fairValue * 100).toFixed(1)}¢) · reserves ${fmtUsd(newReserved.totalReservedCents)} (Δ ${deltaSign}${fmtUsd(Math.abs(deltaCents))})`,
-      market.ticker
+      `YES[${quote.bidCents}/${quote.askCents}] NO[${noBidCents}/${noAskCents}] × ${size} (fv ${(quote.fairValue * 100).toFixed(1)}¢) · reserves ${fmtUsd(newReserved.totalReservedCents)} (Δ ${deltaSign}${fmtUsd(Math.abs(deltaCents))})`,
+      market.ticker,
     );
 
-      const lastQ: LastQuoteRecord = {
-        bidCents: quote.bidCents,
-        askCents: quote.askCents,
-        size,
-        bidOrderId,
-        askOrderId,
-        bidClientId,
-        askClientId,
-        ts: Date.now(),
-      };
-      s.setLastQuote(market.ticker, lastQ);
+    const lastQ: LastQuoteRecord = {
+      bidCents: quote.bidCents,
+      askCents: quote.askCents,
+      size,
+      bidOrderId: yesBidOrderId,
+      askOrderId: yesAskOrderId,
+      bidClientId: yesBidClientId,
+      askClientId: yesAskClientId,
+      ts: Date.now(),
+    };
+    s.setLastQuote(market.ticker, lastQ);
   } catch (e) {
     s.log("error", `placeOrder: ${(e as Error).message}`, market.ticker);
   }
