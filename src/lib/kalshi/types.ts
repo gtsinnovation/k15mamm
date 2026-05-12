@@ -58,12 +58,19 @@ export interface KalshiOrder {
 export interface KalshiFill {
   trade_id: string;
   order_id: string;
-  ticker: string;
+  /** Legacy field; newer API responses use `market_ticker`. */
+  ticker?: string;
+  market_ticker?: string;
   side: "yes" | "no";
   action: "buy" | "sell";
-  count: number;
-  yes_price: number;
-  no_price: number;
+  /** Legacy integer count; newer API uses `count_fp` (decimal string). */
+  count?: number;
+  count_fp?: string;
+  /** Legacy cents prices; newer API uses *_dollars (decimal string in dollars). */
+  yes_price?: number;
+  no_price?: number;
+  yes_price_dollars?: string;
+  no_price_dollars?: string;
   created_time: string;
   is_taker: boolean;
 }
