@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { KalshiCredentials, KalshiMarket, KalshiPosition } from "./kalshi/types";
 import type { EncryptedCredentials } from "./security/vault";
-import { appendAuditEntry } from "./audit/logStore";
+import { appendAuditEntry, appendTickerMismatch, type TickerMismatchEntry } from "./audit/logStore";
 
 export type RunState = "idle" | "running" | "paused" | "killed";
 
@@ -235,6 +235,11 @@ interface BotState {
   logs: LogEntry[];
   log: (level: LogLevel, msg: string, ticker?: string) => void;
   clearLogs: () => void;
+
+  /** In-memory ring of structured ticker-mismatch audit entries (newest first, capped at 200). Mirrored to IndexedDB via appendTickerMismatch for export. */
+  tickerMismatches: TickerMismatchEntry[];
+  recordTickerMismatch: (entry: Omit<TickerMismatchEntry, "ts"> & { ts?: number }) => void;
+  clearTickerMismatchStream: () => void;
 
   pnlHistory: PnlPoint[];
   pushPnl: (p: PnlPoint) => void;
@@ -521,6 +526,24 @@ export const useBotStore = create<BotState>()(
           return { logs: [entry, ...s.logs].slice(0, 500) };
         }),
       clearLogs: () => set({ logs: [] }),
+
+      tickerMismatches: [],
+      recordTickerMismatch: (raw) => {
+        const entry: TickerMismatchEntry = {
+          ts: raw.ts ?? Date.now(),
+          orderId: raw.orderId,
+          fillTicker: raw.fillTicker,
+          expectedTicker: raw.expectedTicker,
+          tradeId: raw.tradeId,
+          kind: raw.kind,
+        };
+        // Mirror to IndexedDB for export / post-mortem. Best effort.
+        void appendTickerMismatch(entry).catch(() => {});
+        set((s) => ({
+          tickerMismatches: [entry, ...s.tickerMismatches].slice(0, 200),
+        }));
+      },
+      clearTickerMismatchStream: () => set({ tickerMismatches: [] }),
 
       pnlHistory: [],
       pushPnl: (p) =>

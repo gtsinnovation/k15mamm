@@ -148,6 +148,14 @@ async function pollFills(client: KalshiClient) {
           `fill ticker mismatch: order=${f.order_id} fill=${fillTickerRaw} expected=${expectedTicker}; using expected`,
           expectedTicker,
         );
+        s.recordTickerMismatch({
+          orderId: f.order_id,
+          fillTicker: fillTickerRaw,
+          expectedTicker,
+          tradeId: f.trade_id,
+          kind: "mismatch",
+          ts,
+        });
         // Prefer the ledger's expected ticker — that's the market we sized
         // collateral against and the one the user sees in the UI.
         resolvedTicker = expectedTicker;
@@ -161,6 +169,14 @@ async function pollFills(client: KalshiClient) {
           "error",
           `fill cannot resolve ticker (no fill.ticker / market_ticker and no ledger entry): order=${f.order_id} trade=${f.trade_id}`,
         );
+        s.recordTickerMismatch({
+          orderId: f.order_id,
+          fillTicker: fillTickerRaw,
+          expectedTicker,
+          tradeId: f.trade_id,
+          kind: "unresolved",
+          ts,
+        });
         continue;
       }
 
