@@ -164,6 +164,24 @@ async function quoteMarket(
     }
   }
 
+  // Skip markets that are closed or about to close — Kalshi rejects new
+  // orders on closed markets with 409 market_closed. Use a small safety
+  // buffer so we don't race the closing tick.
+  const CLOSE_BUFFER_SEC = 15;
+  const closeMs = market.close_time ? new Date(market.close_time).getTime() : 0;
+  if (closeMs > 0 && closeMs - Date.now() <= CLOSE_BUFFER_SEC * 1000) {
+    s.log(
+      "info",
+      `market closed or closing within ${CLOSE_BUFFER_SEC}s — skipping quote`,
+      market.ticker,
+    );
+    return;
+  }
+  if (market.status && market.status !== "open" && market.status !== "active") {
+    s.log("info", `market status=${market.status} — skipping quote`, market.ticker);
+    return;
+  }
+
   // Build MarketState for the AS market-maker. Book prices come from
   // Kalshi in cents (1..99); the strategy operates in dollars (0.01..0.99).
   const expMs = new Date(market.expiration_time).getTime();
