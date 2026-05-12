@@ -56,14 +56,17 @@ export default function Audit() {
   const [to, setTo] = useState<string>("");
   const [email, setEmail] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [mismatches, setMismatches] = useState<TickerMismatchEntry[]>([]);
+  const liveMismatches = useBotStore((s) => s.tickerMismatches);
 
   const reload = async () => {
     setRefreshing(true);
     try {
-      const all = await exportAuditLog();
-      // Newest first.
+      const [all, mm] = await Promise.all([exportAuditLog(), exportTickerMismatches()]);
       all.sort((a, b) => b.ts - a.ts);
+      mm.sort((a, b) => b.ts - a.ts);
       setRows(all);
+      setMismatches(mm);
     } finally {
       setRefreshing(false);
     }
