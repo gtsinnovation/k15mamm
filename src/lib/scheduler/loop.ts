@@ -187,18 +187,13 @@ async function quoteMarket(
   const expMs = new Date(market.expiration_time).getTime();
   const secsToExpiry = Math.max(1, Math.floor((expMs - Date.now()) / 1000));
   const globalInventory = Object.values(s.positions).reduce((a, p) => a + (p.position ?? 0), 0);
-  const asState: AsMarketState = {
-    ticker: market.ticker,
-    strike: market.floor_strike ?? market.cap_strike ?? 0,
-    timeToExpirySec: secsToExpiry,
-    bestBid: market.yes_bid > 0 ? market.yes_bid / 100 : null,
-    bestAsk: market.yes_ask > 0 && market.yes_ask < 100 ? market.yes_ask / 100 : null,
-    positionYes: pos,
-    // Kalshi REST returns a fresh snapshot per call; treat fetch time as book ts.
-    lastBookTs: Date.now() / 1000,
-    spotBtc: spot,
-  };
-  const [asQuote] = generateQuotes([asState], {
+
+  // Live book state — refreshed by retry loop if validation fails.
+  let bestBid: number | null = market.yes_bid > 0 ? market.yes_bid / 100 : null;
+  let bestAsk: number | null =
+    market.yes_ask > 0 && market.yes_ask < 100 ? market.yes_ask / 100 : null;
+
+  const asCfg = {
     gamma: s.strategy.gamma,
     sigmaAnnual: s.strategy.sigmaAnnual,
     k: s.strategy.k,
@@ -206,7 +201,6 @@ async function quoteMarket(
     maxQuoteSize: s.strategy.maxQuoteSize,
     maxInventoryPerMarket: s.risk.perMarketPositionCap,
     maxGlobalInventory: Number.MAX_SAFE_INTEGER,
-    // Configurable freshness threshold; fall back to one tick interval (min 5s).
     maxBookAgeSec:
       s.strategy.maxBookAgeSec ??
       Math.max(5, (s.strategy.tickIntervalMs ?? 5000) / 1000),
@@ -216,37 +210,108 @@ async function quoteMarket(
       ...s.strategy.fillability,
       ...(s.marketFillabilityOverrides?.[market.ticker] ?? {}),
     },
-  });
+  };
 
-  // Debug log every generated quote: mid, reservation, askBidRatio, raw vs final.
-  if (asQuote.debug) {
-    const d = asQuote.debug;
-    const fmt = (x: number) => (x * 100).toFixed(1);
-    s.log(
-      "quote",
-      `quote-debug mid=${fmt(d.mid)}¢ r=${fmt(d.reservation)}¢ ratio=${d.askBidRatio.toFixed(2)}× ` +
-        `raw[${fmt(d.rawBid)}¢/${fmt(d.rawAsk)}¢] final[${fmt(d.finalBid)}¢/${fmt(d.finalAsk)}¢]` +
-        (d.unfillableReason ? ` UNFILLABLE: ${d.unfillableReason}` : ""),
-      market.ticker,
-    );
-    if (d.unfillableReason) {
-      s.recordUnfillableQuote(market.ticker, d.unfillableReason);
+  /**
+   * Validate-and-recompute loop: if a quote fails validation (missing
+   * bid/ask, or NO-mirror legs land outside 1..99¢), re-fetch the live
+   * orderbook and recompute up to MAX_ATTEMPTS times before giving up.
+   */
+  const MAX_ATTEMPTS = 3;
+  const RETRY_DELAY_MS = 250;
+  let asQuote!: ReturnType<typeof generateQuotes>[number];
+  let asState!: AsMarketState;
+  let validationFailure: string | null = null;
+  let attempt = 0;
+  for (; attempt < MAX_ATTEMPTS; attempt++) {
+    asState = {
+      ticker: market.ticker,
+      strike: market.floor_strike ?? market.cap_strike ?? 0,
+      timeToExpirySec: secsToExpiry,
+      bestBid,
+      bestAsk,
+      positionYes: pos,
+      lastBookTs: Date.now() / 1000,
+      spotBtc: spot,
+    };
+    [asQuote] = generateQuotes([asState], asCfg);
+
+    if (asQuote.debug) {
+      const d = asQuote.debug;
+      const fmt = (x: number) => (x * 100).toFixed(1);
+      s.log(
+        "quote",
+        `quote-debug${attempt > 0 ? ` (retry ${attempt})` : ""} mid=${fmt(d.mid)}¢ r=${fmt(d.reservation)}¢ ratio=${d.askBidRatio.toFixed(2)}× ` +
+          `raw[${fmt(d.rawBid)}¢/${fmt(d.rawAsk)}¢] final[${fmt(d.finalBid)}¢/${fmt(d.finalAsk)}¢]` +
+          (d.unfillableReason ? ` UNFILLABLE: ${d.unfillableReason}` : ""),
+        market.ticker,
+      );
+    }
+
+    // Validation #1: both sides present
+    if (asQuote.bidPrice == null || asQuote.askPrice == null) {
+      validationFailure =
+        asQuote.debug?.unfillableReason ??
+        (asQuote.bidPrice == null && asQuote.askPrice == null
+          ? "no quote (insufficient book)"
+          : asQuote.bidPrice == null
+          ? "missing bid side"
+          : "missing ask side");
     } else {
-      s.recordFillableQuote(market.ticker);
+      // Validation #2: NO-mirror legs all within 1..99¢
+      const bidC = Math.round(asQuote.bidPrice * 100);
+      const askC = Math.round(asQuote.askPrice * 100);
+      const noBidC = 100 - askC;
+      const noAskC = 100 - bidC;
+      const allLegs = [bidC, askC, noBidC, noAskC];
+      if (allLegs.some((p) => !Number.isFinite(p) || p < 1 || p > 99)) {
+        validationFailure =
+          `invalid NO-mirror legs (yesBid=${bidC}¢ yesAsk=${askC}¢ ` +
+          `noBid=${noBidC}¢ noAsk=${noAskC}¢)`;
+      } else {
+        validationFailure = null;
+        break; // success
+      }
+    }
+
+    // Validation failed — re-fetch book and try again (unless last attempt).
+    if (attempt < MAX_ATTEMPTS - 1) {
+      s.log(
+        "warn",
+        `validation failed: ${validationFailure} — refetching orderbook (attempt ${attempt + 2}/${MAX_ATTEMPTS})`,
+        market.ticker,
+      );
+      try {
+        const { orderbook } = await client.getOrderbook(market.ticker);
+        // yes[] = resting YES bids; best YES bid = max price.
+        // no[]  = resting NO  bids; best YES ask = 100 − max(no).
+        const yesBids = orderbook.yes ?? [];
+        const noBids = orderbook.no ?? [];
+        const topYes = yesBids.reduce((m, [p]) => (p > m ? p : m), 0);
+        const topNo = noBids.reduce((m, [p]) => (p > m ? p : m), 0);
+        bestBid = topYes > 0 ? topYes / 100 : null;
+        bestAsk = topNo > 0 && topNo < 100 ? (100 - topNo) / 100 : null;
+      } catch (e) {
+        s.log("warn", `orderbook refetch failed: ${errorMessage(e)}`, market.ticker);
+      }
+      await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
     }
   }
 
-  // VALIDATION: every quote must have BOTH a bid and an ask. If either side
-  // is missing, block all order placement — we never quote one-sided.
-  if (asQuote.bidPrice == null || asQuote.askPrice == null) {
-    const reason =
-      asQuote.debug?.unfillableReason ??
-      (asQuote.bidPrice == null && asQuote.askPrice == null
-        ? "no quote (insufficient book)"
-        : asQuote.bidPrice == null
-        ? "missing bid side — blocking placement"
-        : "missing ask side — blocking placement");
-    s.log("info", reason, market.ticker);
+  // Record fillability outcome on the final attempt.
+  if (asQuote.debug?.unfillableReason) {
+    s.recordUnfillableQuote(market.ticker, asQuote.debug.unfillableReason);
+  } else if (!validationFailure) {
+    s.recordFillableQuote(market.ticker);
+  }
+
+  // Give up: validation still failing after retries.
+  if (validationFailure) {
+    s.log(
+      "info",
+      `${validationFailure} — blocking placement after ${MAX_ATTEMPTS} attempt(s)`,
+      market.ticker,
+    );
     return;
   }
 
@@ -257,27 +322,15 @@ async function quoteMarket(
       ? 0.5 * (asState.bestBid + asState.bestAsk)
       : asState.bestBid ?? asState.bestAsk ?? 0.5;
   const quote = {
-    bidCents: Math.round(asQuote.bidPrice * 100),
-    askCents: Math.round(asQuote.askPrice * 100),
+    bidCents: Math.round(asQuote.bidPrice! * 100),
+    askCents: Math.round(asQuote.askPrice! * 100),
     fairValue: midDollars,
   };
   const size = s.strategy.maxQuoteSize;
 
-  // Quotes are mirrored onto the NO contract (NO buy ≡ YES sell at 100−p
-  // and vice versa). Per project rule: every quote must include bid AND
-  // ask on BOTH YES and NO contracts.
-  const noBidCents = 100 - quote.askCents; // buy NO  (bid on NO market)
-  const noAskCents = 100 - quote.bidCents; // sell NO (ask on NO market)
-  const allLegPrices = [quote.bidCents, quote.askCents, noBidCents, noAskCents];
-  if (allLegPrices.some((p) => !Number.isFinite(p) || p < 1 || p > 99)) {
-    s.log(
-      "warn",
-      `invalid leg prices yesBid=${quote.bidCents}¢ yesAsk=${quote.askCents}¢ ` +
-        `noBid=${noBidCents}¢ noAsk=${noAskCents}¢ — blocking placement`,
-      market.ticker,
-    );
-    return;
-  }
+  // NO-mirror legs (validated above).
+  const noBidCents = 100 - quote.askCents;
+  const noAskCents = 100 - quote.bidCents;
 
   // Re-quote threshold: skip if previous quote within threshold and still resting.
   const prev = s.lastQuotes[market.ticker];
