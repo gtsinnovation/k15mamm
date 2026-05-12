@@ -28,8 +28,12 @@ import {
   exportAuditLog,
   clearAuditLog,
   downloadAuditLog,
+  exportTickerMismatches,
+  clearTickerMismatches,
+  type TickerMismatchEntry,
 } from "@/lib/audit/logStore";
 import type { LogEntry, LogLevel } from "@/lib/store";
+import { useBotStore } from "@/lib/store";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
