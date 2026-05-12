@@ -527,6 +527,24 @@ export const useBotStore = create<BotState>()(
         }),
       clearLogs: () => set({ logs: [] }),
 
+      tickerMismatches: [],
+      recordTickerMismatch: (raw) => {
+        const entry: TickerMismatchEntry = {
+          ts: raw.ts ?? Date.now(),
+          orderId: raw.orderId,
+          fillTicker: raw.fillTicker,
+          expectedTicker: raw.expectedTicker,
+          tradeId: raw.tradeId,
+          kind: raw.kind,
+        };
+        // Mirror to IndexedDB for export / post-mortem. Best effort.
+        void appendTickerMismatch(entry).catch(() => {});
+        set((s) => ({
+          tickerMismatches: [entry, ...s.tickerMismatches].slice(0, 200),
+        }));
+      },
+      clearTickerMismatchStream: () => set({ tickerMismatches: [] }),
+
       pnlHistory: [],
       pushPnl: (p) =>
         set((s) => ({ pnlHistory: [...s.pnlHistory, p].slice(-720) })),
