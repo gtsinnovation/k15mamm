@@ -363,7 +363,30 @@ export const useBotStore = create<BotState>()(
             changed = true;
             return incoming;
           });
-          return changed ? { markets: next } : {};
+
+          // Cycle rollover: when a tracked ticker expires (no longer in the
+          // open markets list) carry the tracking onto the newly-listed
+          // markets so the bot continues quoting after the cycle closes
+          // instead of sitting idle on dead tickers.
+          const openTickers = new Set(m.map((x) => x.ticker));
+          const prevTickers = new Set(prev.map((x) => x.ticker));
+          const tracked = s.trackedTickers;
+          const survivingTracked = tracked.filter((t) => openTickers.has(t));
+          const expiredTrackedCount = tracked.length - survivingTracked.length;
+          let nextTracked = tracked;
+          if (expiredTrackedCount > 0 || (tracked.length > 0 && survivingTracked.length === 0)) {
+            const newlyListed = m
+              .map((x) => x.ticker)
+              .filter((t) => !prevTickers.has(t) && !survivingTracked.includes(t));
+            nextTracked = Array.from(new Set([...survivingTracked, ...newlyListed]));
+          } else if (survivingTracked.length !== tracked.length) {
+            nextTracked = survivingTracked;
+          }
+
+          const patch: Partial<BotState> = {};
+          if (changed) patch.markets = next;
+          if (nextTracked !== tracked) patch.trackedTickers = nextTracked;
+          return patch;
         }),
 
       marketReloadMinutes: [0, 16, 31, 45],
