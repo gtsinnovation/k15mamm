@@ -114,13 +114,26 @@ async function pollFills(client: KalshiClient) {
     if (fresh.length === 0) return;
     let maxTs = s.lastFillTs;
     for (const f of fresh) {
-      const price = f.side === "yes" ? f.yes_price : f.no_price;
+      // Newer Kalshi API returns prices as decimal-dollar strings
+      // (`yes_price_dollars`) and counts as decimal strings (`count_fp`).
+      // Legacy responses used integer cents (`yes_price`) and integer counts
+      // (`count`). Support both so the log never shows "undefined".
+      const yesPriceCents =
+        f.yes_price ??
+        (f.yes_price_dollars != null ? Math.round(parseFloat(f.yes_price_dollars) * 100) : undefined);
+      const noPriceCents =
+        f.no_price ??
+        (f.no_price_dollars != null ? Math.round(parseFloat(f.no_price_dollars) * 100) : undefined);
+      const price = f.side === "yes" ? yesPriceCents : noPriceCents;
+      const count =
+        f.count ?? (f.count_fp != null ? parseFloat(f.count_fp) : undefined);
+      const ticker = f.ticker ?? f.market_ticker ?? "unknown";
       const ts = new Date(f.created_time).getTime();
       if (ts > maxTs) maxTs = ts;
       s.log(
         "fill",
-        `${f.action.toUpperCase()} ${f.count} @ ${price}¢ ${f.is_taker ? "(taker)" : "(maker)"} order=${f.order_id}`,
-        f.ticker
+        `${f.action.toUpperCase()} ${count ?? "?"} @ ${price ?? "?"}¢ ${f.is_taker ? "(taker)" : "(maker)"} order=${f.order_id}`,
+        ticker
       );
       // Mark the order as filled in the ledger (releases collateral row).
       s.closeOrderLedger(f.order_id, "filled", price);
