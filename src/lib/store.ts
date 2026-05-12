@@ -145,6 +145,12 @@ export interface OrderLedgerEntry {
   closedAt?: number;
   /** Last price seen if filled (cents). */
   fillPriceCents?: number;
+  /**
+   * Set when a fill's reported ticker disagreed with the ticker stored on
+   * this order when it was placed. Surfaced in the UI as a warning badge
+   * so operators can investigate Kalshi → bot reconciliation issues.
+   */
+  tickerMismatch?: { fillTicker: string; expectedTicker: string };
 }
 
 export interface ActualReservedSnapshot {
