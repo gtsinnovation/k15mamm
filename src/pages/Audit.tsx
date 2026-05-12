@@ -391,3 +391,148 @@ function CountBadge({
     </div>
   );
 }
+
+function TickerMismatchPanel({
+  persisted,
+  live,
+  onCleared,
+}: {
+  persisted: TickerMismatchEntry[];
+  live: TickerMismatchEntry[];
+  onCleared: () => void;
+}) {
+  // Merge live + persisted, dedup by (tradeId, orderId, ts), newest first.
+  const merged = useMemo(() => {
+    const map = new Map<string, TickerMismatchEntry>();
+    for (const e of [...live, ...persisted]) {
+      map.set(`${e.tradeId}|${e.orderId}|${e.ts}`, e);
+    }
+    return Array.from(map.values()).sort((a, b) => b.ts - a.ts);
+  }, [live, persisted]);
+
+  const download = (fmt: "json" | "csv") => {
+    if (merged.length === 0) {
+      toast.warning("No ticker-mismatch entries to export");
+      return;
+    }
+    let blob: Blob;
+    let ext: string;
+    if (fmt === "json") {
+      blob = new Blob([JSON.stringify(merged, null, 2)], { type: "application/json" });
+      ext = "json";
+    } else {
+      const header = ["timestamp_iso", "timestamp_ms", "kind", "order_id", "trade_id", "fill_ticker", "expected_ticker"];
+      const esc = (v: string) => `"${v.replace(/"/g, '""')}"`;
+      const lines = [header.join(",")];
+      for (const e of merged) {
+        lines.push(
+          [
+            new Date(e.ts).toISOString(),
+            String(e.ts),
+            e.kind,
+            e.orderId,
+            e.tradeId,
+            esc(e.fillTicker ?? ""),
+            esc(e.expectedTicker ?? ""),
+          ].join(","),
+        );
+      }
+      blob = new Blob([lines.join("\n")], { type: "text/csv" });
+      ext = "csv";
+    }
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `k15m-ticker-mismatches-${new Date().toISOString().replace(/[:.]/g, "-")}.${ext}`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    toast.success(`Exported ${merged.length} mismatch${merged.length === 1 ? "" : "es"}`);
+  };
+
+  const clear = async () => {
+    if (!confirm(`Delete all ${merged.length} ticker-mismatch entries from this browser?`)) return;
+    await clearTickerMismatches();
+    onCleared();
+    toast.success("Ticker mismatches cleared");
+  };
+
+  return (
+    <div className="rounded-lg border border-warning/30 bg-card">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
+        <div className="flex items-center gap-2">
+          <ShieldAlert className="h-4 w-4 text-warning" />
+          <div>
+            <div className="text-sm font-semibold">Ticker mismatches</div>
+            <div className="text-[11px] text-muted-foreground">
+              Structured audit stream of fill → order ticker reconciliation events.
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-xs text-muted-foreground">{merged.length}</span>
+          <Button size="sm" variant="outline" onClick={() => download("csv")}>
+            <Download className="mr-2 h-3.5 w-3.5" /> CSV
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => download("json")}>
+            <Download className="mr-2 h-3.5 w-3.5" /> JSON
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={clear}
+            className="text-destructive hover:text-destructive"
+          >
+            <Trash2 className="mr-2 h-3.5 w-3.5" /> Clear
+          </Button>
+        </div>
+      </div>
+      {merged.length === 0 ? (
+        <div className="px-4 py-6 text-center text-xs text-muted-foreground">
+          No ticker mismatches recorded. Fills are reconciling cleanly against the order ledger.
+        </div>
+      ) : (
+        <ScrollArea className="max-h-64">
+          <table className="w-full min-w-[720px] text-xs">
+            <thead className="sticky top-0 bg-card text-[10px] uppercase text-muted-foreground">
+              <tr>
+                <th className="px-3 py-2 text-left">Time</th>
+                <th className="px-3 py-2 text-left">Kind</th>
+                <th className="px-3 py-2 text-left">Order ID</th>
+                <th className="px-3 py-2 text-left">Trade ID</th>
+                <th className="px-3 py-2 text-left">Fill ticker</th>
+                <th className="px-3 py-2 text-left">Expected ticker</th>
+              </tr>
+            </thead>
+            <tbody>
+              {merged.slice(0, 50).map((e) => (
+                <tr key={`${e.tradeId}-${e.orderId}-${e.ts}`} className="border-t border-border/50">
+                  <td className="whitespace-nowrap px-3 py-1.5 font-mono text-muted-foreground">
+                    {new Date(e.ts).toLocaleString()}
+                  </td>
+                  <td className="px-3 py-1.5">
+                    <Badge
+                      variant="outline"
+                      className={
+                        e.kind === "unresolved"
+                          ? "border-destructive/30 bg-destructive/10 text-destructive"
+                          : "border-warning/30 bg-warning/10 text-warning"
+                      }
+                    >
+                      {e.kind}
+                    </Badge>
+                  </td>
+                  <td className="px-3 py-1.5 font-mono" title={e.orderId}>{e.orderId.slice(0, 8)}…</td>
+                  <td className="px-3 py-1.5 font-mono" title={e.tradeId}>{e.tradeId.slice(0, 8)}…</td>
+                  <td className="px-3 py-1.5 font-mono">{e.fillTicker ?? "—"}</td>
+                  <td className="px-3 py-1.5 font-mono">{e.expectedTicker ?? "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </ScrollArea>
+      )}
+    </div>
+  );
+}
