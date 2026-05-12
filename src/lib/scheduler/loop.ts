@@ -711,6 +711,38 @@ function handleWatchdog() {
   }
 }
 
+let trackedUnsub: (() => void) | null = null;
+let immediateTickPending = false;
+
+/**
+ * Subscribe to `trackedTickers` changes so a cycle rollover (which
+ * auto-carries tracking onto newly-listed markets in `setMarkets`) triggers
+ * an immediate quoting tick instead of waiting up to `tickIntervalMs` for
+ * the next scheduled run.
+ */
+function subscribeTrackedRollover() {
+  if (trackedUnsub) return;
+  let prev = useBotStore.getState().trackedTickers;
+  trackedUnsub = useBotStore.subscribe((s) => {
+    const next = s.trackedTickers;
+    if (next === prev) return;
+    const added = next.filter((t) => !prev.includes(t));
+    prev = next;
+    if (added.length === 0) return;
+    if (s.runState !== "running") return;
+    if (immediateTickPending || ticking) return;
+    immediateTickPending = true;
+    s.log(
+      "info",
+      `tracked rollover: ${added.length} new ticker(s) — forcing immediate quote refresh`,
+    );
+    queueMicrotask(() => {
+      immediateTickPending = false;
+      void tick();
+    });
+  });
+}
+
 export function start() {
   const s = useBotStore.getState();
   if (!s.credentials) {
@@ -727,6 +759,7 @@ export function start() {
   s.log("info", "Bot started");
   if (timer != null) window.clearInterval(timer);
   timer = window.setInterval(tick, s.strategy.tickIntervalMs);
+  subscribeTrackedRollover();
   // Run immediately
   void tick();
 }
