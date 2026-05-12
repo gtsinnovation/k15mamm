@@ -287,6 +287,15 @@ export default function Audit() {
           </div>
         </div>
 
+        <TickerMismatchPanel
+          persisted={mismatches}
+          live={liveMismatches}
+          onCleared={() => {
+            setMismatches([]);
+            useBotStore.getState().clearTickerMismatchStream();
+          }}
+        />
+
         <div className="rounded-lg border border-border bg-card">
           <ScrollArea className="h-[60vh]">
             <table className="w-full min-w-[720px] text-sm">
