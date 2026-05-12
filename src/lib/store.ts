@@ -225,7 +225,8 @@ interface BotState {
     orderId: string,
     status: Exclude<OrderLedgerStatus, "resting" | "unknown">,
     fillPriceCents?: number,
-  ) => void;
+    fillTicker?: string,
+  ) => { entry: OrderLedgerEntry | null; mismatch: boolean };
   clearOrderLedger: () => void;
 
   actualReserved: ActualReservedSnapshot | null;
