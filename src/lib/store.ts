@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { KalshiCredentials, KalshiMarket, KalshiPosition } from "./kalshi/types";
 import type { EncryptedCredentials } from "./security/vault";
-import { appendAuditEntry } from "./audit/logStore";
+import { appendAuditEntry, appendTickerMismatch, type TickerMismatchEntry } from "./audit/logStore";
 
 export type RunState = "idle" | "running" | "paused" | "killed";
 
