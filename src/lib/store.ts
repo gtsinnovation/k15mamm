@@ -480,20 +480,32 @@ export const useBotStore = create<BotState>()(
         set((s) => ({
           orderLedger: [entry, ...s.orderLedger.filter((e) => e.orderId !== entry.orderId)].slice(0, 500),
         })),
-      closeOrderLedger: (orderId, status, fillPriceCents) =>
+      closeOrderLedger: (orderId, status, fillPriceCents, fillTicker) => {
+        const prior = get().orderLedger.find((e) => e.orderId === orderId) ?? null;
+        const mismatch = !!(
+          prior && fillTicker && fillTicker !== "unknown" && prior.ticker !== fillTicker
+        );
+        let closed: OrderLedgerEntry | null = null;
         set((s) => ({
-          orderLedger: s.orderLedger.map((e) =>
-            e.orderId === orderId && e.status === "resting"
-              ? {
-                  ...e,
-                  status,
-                  closedAt: Date.now(),
-                  releasedCents: e.reservedCents,
-                  fillPriceCents: fillPriceCents ?? e.fillPriceCents,
-                }
-              : e,
-          ),
-        })),
+          orderLedger: s.orderLedger.map((e) => {
+            if (e.orderId !== orderId || e.status !== "resting") return e;
+            const next: OrderLedgerEntry = {
+              ...e,
+              status,
+              closedAt: Date.now(),
+              releasedCents: e.reservedCents,
+              fillPriceCents: fillPriceCents ?? e.fillPriceCents,
+              tickerMismatch:
+                mismatch && fillTicker
+                  ? { fillTicker, expectedTicker: e.ticker }
+                  : e.tickerMismatch,
+            };
+            closed = next;
+            return next;
+          }),
+        }));
+        return { entry: closed ?? prior, mismatch };
+      },
       clearOrderLedger: () => set({ orderLedger: [] }),
 
       actualReserved: null,
