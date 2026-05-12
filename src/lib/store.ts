@@ -236,6 +236,11 @@ interface BotState {
   log: (level: LogLevel, msg: string, ticker?: string) => void;
   clearLogs: () => void;
 
+  /** In-memory ring of structured ticker-mismatch audit entries (newest first, capped at 200). Mirrored to IndexedDB via appendTickerMismatch for export. */
+  tickerMismatches: TickerMismatchEntry[];
+  recordTickerMismatch: (entry: Omit<TickerMismatchEntry, "ts"> & { ts?: number }) => void;
+  clearTickerMismatchStream: () => void;
+
   pnlHistory: PnlPoint[];
   pushPnl: (p: PnlPoint) => void;
   resetPnlHistory: () => void;
