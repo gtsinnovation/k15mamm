@@ -125,7 +125,20 @@ function OrderRow({ entry: e }: { entry: OrderLedgerEntry }) {
   return (
     <tr className="border-t border-border/50">
       <td className="px-3 py-2 font-mono text-xs text-muted-foreground">{fmtTime(e.placedAt)}</td>
-      <td className="px-3 py-2 font-mono text-xs">{e.ticker}</td>
+      <td className="px-3 py-2 font-mono text-xs">
+        <div className="flex items-center gap-1.5">
+          <span>{e.ticker}</span>
+          {e.tickerMismatch && (
+            <Badge
+              variant="outline"
+              className="border-warning/40 bg-warning/10 px-1.5 py-0 text-[10px] uppercase text-warning"
+              title={`Fill reported ${e.tickerMismatch.fillTicker} but order was placed on ${e.tickerMismatch.expectedTicker}`}
+            >
+              mismatch
+            </Badge>
+          )}
+        </div>
+      </td>
       <td className="px-3 py-2 text-xs">
         <span
           className={cn(
