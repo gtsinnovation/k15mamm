@@ -80,6 +80,17 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
+      <Helmet>
+        <title>Dashboard — K15M AMM Kalshi BTC Market Maker</title>
+        <meta
+          name="description"
+          content="Live control panel for the K15M AMM bot: tracked markets, strategy parameters, risk caps, P&L, and activity log for Kalshi BTC 15-minute contracts."
+        />
+        <link rel="canonical" href="https://k15mamm.webpwa.io/" />
+        <meta property="og:title" content="Dashboard — K15M AMM" />
+        <meta property="og:description" content="Live Kalshi BTC market maker control panel — quotes, fills, risk, and P&L." />
+        <meta property="og:url" content="https://k15mamm.webpwa.io/" />
+      </Helmet>
       <UnlockGate />
       <header className="border-b border-border bg-card/50 backdrop-blur">
         <div className="container flex items-center justify-between py-4">
