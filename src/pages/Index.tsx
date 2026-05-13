@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Helmet } from "react-helmet-async";
 import { StatusHeader } from "@/components/mm/StatusHeader";
 import { ControlBar } from "@/components/mm/ControlBar";
 import { BotStatusBanner } from "@/components/mm/BotStatusBanner";
@@ -83,7 +84,9 @@ const Index = () => {
       <header className="border-b border-border bg-card/50 backdrop-blur">
         <div className="container flex items-center justify-between py-4">
           <div>
-            <h1 className="text-xl font-bold tracking-tight">K15M AMM</h1>
+            <h1 className="text-xl font-bold tracking-tight">
+              K15M AMM — Automated Market Maker for Kalshi BTC
+            </h1>
             <p className="text-xs text-muted-foreground">
               Avellaneda–Stoikov · Kalshi BTC 15-minute contracts · Local browser bot
             </p>
