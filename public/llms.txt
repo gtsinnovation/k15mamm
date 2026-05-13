@@ -1,0 +1,13 @@
+# K15M AMM
+
+> Local-first, browser-based Avellaneda–Stoikov automated market maker for Kalshi BTC 15-minute prediction markets. Bring your own Kalshi API key — the encrypted vault and all bot logic run entirely in the user's browser.
+
+K15M AMM signs Kalshi API requests with a user-supplied RSA key that is encrypted in-browser with AES-GCM (PBKDF2-SHA256, 250k iterations). It quotes both YES and NO sides of hourly BTC range markets using an Avellaneda–Stoikov style strategy with configurable risk caps, kill switch, and full audit trail.
+
+## Pages
+
+- [Dashboard](/): Live market maker control panel — start/stop/kill switch, tracked markets, strategy sliders, risk panel, P&L, and activity log.
+- [Credentials](/credentials): Add or update Kalshi API Key ID and encrypted RSA private key.
+- [Audit log](/audit): Per-user local audit trail of quotes, fills, cancels, errors, and ticker mismatches with CSV/JSON export.
+- [Backtest](/backtest): Replay historical 15-minute BTC cycles against the current strategy parameters.
+- [Privacy](/privacy): What is collected, where it is stored, and how the local vault works.
