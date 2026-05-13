@@ -112,6 +112,17 @@ export default function Backtest() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
+      <Helmet>
+        <title>Backtest — K15M AMM Kalshi BTC Strategy Replay</title>
+        <meta
+          name="description"
+          content="Replay historical 15-minute Kalshi BTC cycles against your current Avellaneda–Stoikov parameters. Reports P&L, max drawdown, and hit rate."
+        />
+        <link rel="canonical" href="https://k15mamm.webpwa.io/backtest" />
+        <meta property="og:title" content="Backtest — K15M AMM" />
+        <meta property="og:description" content="Replay historical Kalshi BTC cycles against the current strategy." />
+        <meta property="og:url" content="https://k15mamm.webpwa.io/backtest" />
+      </Helmet>
       <header className="border-b border-border bg-card/50 backdrop-blur">
         <div className="container flex items-center justify-between py-4">
           <div className="flex items-center gap-3">
