@@ -62,6 +62,17 @@ export default function Landing({ onAuthorized }: LandingProps) {
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-background text-foreground">
+      <Helmet>
+        <title>K15M AMM — Automated Market Maker for Kalshi BTC Markets</title>
+        <meta
+          name="description"
+          content="Local-first Avellaneda–Stoikov market maker for Kalshi BTC 15-minute prediction markets. Bring your own Kalshi API key — encrypted in your browser."
+        />
+        <link rel="canonical" href="https://k15mamm.webpwa.io/" />
+        <meta property="og:title" content="K15M AMM — Automated Market Maker for Kalshi BTC" />
+        <meta property="og:description" content="Local-first Avellaneda–Stoikov bot for Kalshi BTC 15-minute markets. Your keys, your browser, your edge." />
+        <meta property="og:url" content="https://k15mamm.webpwa.io/" />
+      </Helmet>
       <div className="absolute inset-0 -z-10">
         <img
           src={heroImage}
