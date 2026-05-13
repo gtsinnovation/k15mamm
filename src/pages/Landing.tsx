@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 import { Button } from "@/components/ui/button";
@@ -107,6 +108,9 @@ export default function Landing({ onAuthorized }: LandingProps) {
                 style={{ backgroundImage: "var(--gradient-primary)" }}
               >
                 AMM
+              </span>
+              <span className="block text-2xl font-medium text-muted-foreground sm:text-3xl mt-2">
+                Automated Market Maker for Kalshi BTC
               </span>
             </h1>
             <p className="max-w-xl text-lg text-muted-foreground">
