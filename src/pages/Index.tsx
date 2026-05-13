@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Helmet } from "react-helmet-async";
 import { StatusHeader } from "@/components/mm/StatusHeader";
 import { ControlBar } from "@/components/mm/ControlBar";
 import { BotStatusBanner } from "@/components/mm/BotStatusBanner";
@@ -79,11 +80,24 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
+      <Helmet>
+        <title>Dashboard — K15M AMM Kalshi BTC Market Maker</title>
+        <meta
+          name="description"
+          content="Live control panel for the K15M AMM bot: tracked markets, strategy parameters, risk caps, P&L, and activity log for Kalshi BTC 15-minute contracts."
+        />
+        <link rel="canonical" href="https://k15mamm.webpwa.io/" />
+        <meta property="og:title" content="Dashboard — K15M AMM" />
+        <meta property="og:description" content="Live Kalshi BTC market maker control panel — quotes, fills, risk, and P&L." />
+        <meta property="og:url" content="https://k15mamm.webpwa.io/" />
+      </Helmet>
       <UnlockGate />
       <header className="border-b border-border bg-card/50 backdrop-blur">
         <div className="container flex items-center justify-between py-4">
           <div>
-            <h1 className="text-xl font-bold tracking-tight">K15M AMM</h1>
+            <h1 className="text-xl font-bold tracking-tight">
+              K15M AMM — Automated Market Maker for Kalshi BTC
+            </h1>
             <p className="text-xs text-muted-foreground">
               Avellaneda–Stoikov · Kalshi BTC 15-minute contracts · Local browser bot
             </p>

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -163,6 +164,17 @@ export default function Audit() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
+      <Helmet>
+        <title>Audit Log — K15M AMM</title>
+        <meta
+          name="description"
+          content="Per-user local audit trail for K15M AMM: quotes, fills, cancels, errors, and ticker mismatches with CSV/JSON export."
+        />
+        <link rel="canonical" href="https://k15mamm.webpwa.io/audit" />
+        <meta property="og:title" content="Audit Log — K15M AMM" />
+        <meta property="og:description" content="Local activity log of every quote, fill, cancel, and error from the K15M bot." />
+        <meta property="og:url" content="https://k15mamm.webpwa.io/audit" />
+      </Helmet>
       <header className="border-b border-border bg-card/50 backdrop-blur">
         <div className="container flex items-center justify-between py-4">
           <div className="flex items-center gap-3">

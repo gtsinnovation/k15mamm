@@ -1,10 +1,22 @@
 import { Link } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 
 export default function Privacy() {
   return (
     <div className="min-h-screen bg-background text-foreground">
+      <Helmet>
+        <title>Privacy Policy — K15M AMM</title>
+        <meta
+          name="description"
+          content="How K15M AMM handles your Kalshi API key, where data is stored, and what is (and isn't) collected. Local-first by design."
+        />
+        <link rel="canonical" href="https://k15mamm.webpwa.io/privacy" />
+        <meta property="og:title" content="Privacy Policy — K15M AMM" />
+        <meta property="og:description" content="Local-first privacy policy: your Kalshi private key never leaves your browser." />
+        <meta property="og:url" content="https://k15mamm.webpwa.io/privacy" />
+      </Helmet>
       <div className="container max-w-3xl py-10">
         <Button asChild variant="ghost" size="sm" className="mb-6">
           <Link to="/"><ArrowLeft className="mr-2 h-4 w-4" /> Back</Link>

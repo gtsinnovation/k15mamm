@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import { SettingsPanel } from "@/components/mm/SettingsPanel";
 import { UnlockGate } from "@/components/mm/UnlockGate";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,17 @@ import { ArrowLeft, KeyRound } from "lucide-react";
 export default function Credentials() {
   return (
     <div className="min-h-screen bg-background text-foreground">
+      <Helmet>
+        <title>Kalshi API Credentials — K15M AMM</title>
+        <meta
+          name="description"
+          content="Add, update, or remove your Kalshi API Key ID and RSA private key. Your PEM is encrypted locally with AES-GCM and a passphrase you choose."
+        />
+        <link rel="canonical" href="https://k15mamm.webpwa.io/credentials" />
+        <meta property="og:title" content="Kalshi API Credentials — K15M AMM" />
+        <meta property="og:description" content="Manage your encrypted Kalshi API key vault." />
+        <meta property="og:url" content="https://k15mamm.webpwa.io/credentials" />
+      </Helmet>
       <UnlockGate />
       <header className="border-b border-border bg-card/50 backdrop-blur">
         <div className="container flex items-center justify-between py-4">
